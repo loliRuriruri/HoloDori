@@ -1,4 +1,3 @@
-use std::sync::{Arc, Mutex};
 use super::progman;
 use super::shell::{discover_host_windows, get_system_diagnostics_snapshot, is_window_valid};
 use super::types::{
@@ -6,6 +5,7 @@ use super::types::{
     WallpaperHostPreference, WallpaperState, WallpaperStatus, WallpaperTopology,
 };
 use super::workerw::{self, OriginalWindowStyles};
+use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
 
 #[derive(Default)]
@@ -266,7 +266,10 @@ impl WallpaperHostManager {
         };
 
         if let Some(child_hwnd) = child {
-            warn!("Triggering wallpaper recovery for window 0x{:08X}", child_hwnd);
+            warn!(
+                "Triggering wallpaper recovery for window 0x{:08X}",
+                child_hwnd
+            );
             self.attach(child_hwnd, pref, bounds)
         } else {
             Err("No active window to recover".into())

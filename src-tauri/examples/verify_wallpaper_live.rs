@@ -168,23 +168,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 2. ACTUAL WORKERW RUNTIME TEST
     // -------------------------------------------------------------------------
     println!("\n--- [GATE 2: ACTUAL WORKERW RUNTIME TEST] ---");
-    let discovered = discover_host_windows().expect("Failed to discover Windows desktop shell host windows");
+    let discovered =
+        discover_host_windows().expect("Failed to discover Windows desktop shell host windows");
     println!("  Discovered Host Windows:");
-    println!("    Progman HWND:          0x{:08X}", discovered.progman_hwnd);
-    println!("    SHELLDLL_DefView HWND: 0x{:08X}", discovered.defview_hwnd);
-    println!("    WorkerW HWND:          {}", discovered.workerw_hwnd.map(|h| format!("0x{:08X}", h)).unwrap_or_else(|| "None".into()));
+    println!(
+        "    Progman HWND:          0x{:08X}",
+        discovered.progman_hwnd
+    );
+    println!(
+        "    SHELLDLL_DefView HWND: 0x{:08X}",
+        discovered.defview_hwnd
+    );
+    println!(
+        "    WorkerW HWND:          {}",
+        discovered
+            .workerw_hwnd
+            .map(|h| format!("0x{:08X}", h))
+            .unwrap_or_else(|| "None".into())
+    );
     println!("    Explorer PID:          {}", discovered.explorer_pid);
     println!("    Detected Topology:     {:?}", discovered.topology);
 
     assert_ne!(discovered.progman_hwnd, 0, "Progman must exist");
     assert_ne!(discovered.defview_hwnd, 0, "SHELLDLL_DefView must exist");
-    assert!(discovered.workerw_hwnd.is_some(), "WorkerW host must exist in Windows 11");
+    assert!(
+        discovered.workerw_hwnd.is_some(),
+        "WorkerW host must exist in Windows 11"
+    );
 
     let workerw_target = discovered.workerw_hwnd.unwrap();
 
     // Create native live test window
     let test_hwnd = create_native_test_window("HDM_Live2D_Wallpaper_Acceptance", 500, 700)?;
-    println!("  Created native test window: HWND 0x{:08X}", test_hwnd as usize);
+    println!(
+        "  Created native test window: HWND 0x{:08X}",
+        test_hwnd as usize
+    );
 
     let bounds = WallpaperBounds {
         x: 100,
@@ -202,7 +221,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("    Is Fallback:         {}", status.is_fallback);
     println!("    Host HWND:           {:?}", status.host_hwnd);
 
-    assert_eq!(status.state, WallpaperState::ActiveWorkerW, "Must be ActiveWorkerW");
+    assert_eq!(
+        status.state,
+        WallpaperState::ActiveWorkerW,
+        "Must be ActiveWorkerW"
+    );
     assert_eq!(status.active_host, WallpaperHostKind::WorkerW);
     assert!(status.is_wallpaper_active);
     assert!(!status.is_fallback);
@@ -214,14 +237,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("  Win32 Hierarchy & Style Verification:");
     println!("    Target WorkerW HWND:   0x{:08X}", workerw_target);
-    println!("    Actual Parent HWND:    0x{:08X}", actual_parent as usize);
-    println!("    Actual Style:          0x{:08X} (WS_CHILD: {})", actual_style, (actual_style as u32 & WS_CHILD) != 0);
-    println!("    Actual ExStyle:        0x{:08X} (WS_EX_TRANSPARENT: {})", actual_exstyle, (actual_exstyle as u32 & WS_EX_TRANSPARENT) != 0);
+    println!(
+        "    Actual Parent HWND:    0x{:08X}",
+        actual_parent as usize
+    );
+    println!(
+        "    Actual Style:          0x{:08X} (WS_CHILD: {})",
+        actual_style,
+        (actual_style as u32 & WS_CHILD) != 0
+    );
+    println!(
+        "    Actual ExStyle:        0x{:08X} (WS_EX_TRANSPARENT: {})",
+        actual_exstyle,
+        (actual_exstyle as u32 & WS_EX_TRANSPARENT) != 0
+    );
 
-    assert_eq!(actual_parent as usize, workerw_target, "Parent must match WorkerW HWND");
-    assert_ne!(actual_style as u32 & WS_CHILD, 0, "Window must have WS_CHILD style");
-    assert_ne!(actual_exstyle as u32 & WS_EX_TRANSPARENT, 0, "Window must have WS_EX_TRANSPARENT style for click-through");
-    assert!(unsafe { IsWindow(discovered.defview_hwnd as HWND) } != 0, "SHELLDLL_DefView must remain valid");
+    assert_eq!(
+        actual_parent as usize, workerw_target,
+        "Parent must match WorkerW HWND"
+    );
+    assert_ne!(
+        actual_style as u32 & WS_CHILD,
+        0,
+        "Window must have WS_CHILD style"
+    );
+    assert_ne!(
+        actual_exstyle as u32 & WS_EX_TRANSPARENT,
+        0,
+        "Window must have WS_EX_TRANSPARENT style for click-through"
+    );
+    assert!(
+        unsafe { IsWindow(discovered.defview_hwnd as HWND) } != 0,
+        "SHELLDLL_DefView must remain valid"
+    );
 
     println!("  >>> GATE 2: PASS (WorkerW host attached behind icons, DefView intact, click-through verified)");
 
@@ -229,17 +277,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 3. SECOND MODEL RUNTIME TEST (IN-PLACE REPLACEMENT)
     // -------------------------------------------------------------------------
     println!("\n--- [GATE 3: SECOND MODEL RUNTIME TEST] ---");
-    println!("  Simulating model switch while True Wallpaper remains active (00007_001 -> 00010_001)...");
+    println!(
+        "  Simulating model switch while True Wallpaper remains active (00007_001 -> 00010_001)..."
+    );
     pump_messages();
     std::thread::sleep(Duration::from_millis(200));
 
     // Confirm parent and styles persist across in-place model switch
     let post_switch_parent = unsafe { GetParent(test_hwnd) };
     let post_switch_status = mgr.get_status();
-    assert_eq!(post_switch_parent as usize, workerw_target, "Parent must remain WorkerW");
+    assert_eq!(
+        post_switch_parent as usize, workerw_target,
+        "Parent must remain WorkerW"
+    );
     assert_eq!(post_switch_status.state, WallpaperState::ActiveWorkerW);
     assert!(post_switch_status.is_wallpaper_active);
-    println!("  In-place model switch verified: parent HWND stable at 0x{:08X}", post_switch_parent as usize);
+    println!(
+        "  In-place model switch verified: parent HWND stable at 0x{:08X}",
+        post_switch_parent as usize
+    );
     println!("  >>> GATE 3: PASS");
 
     // -------------------------------------------------------------------------
@@ -268,13 +324,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         pump_messages();
         if i % 5 == 0 || i == 20 {
             let mem_now = get_process_working_set_kb();
-            println!("  Iteration {:2}/20 completed — Parent: 0x{:08X}, WorkingSet: {} KB", i, cur_parent as usize, mem_now);
+            println!(
+                "  Iteration {:2}/20 completed — Parent: 0x{:08X}, WorkingSet: {} KB",
+                i, cur_parent as usize, mem_now
+            );
         }
     }
 
     let mem_after = get_process_working_set_kb();
-    println!("  Final Process WorkingSet:   {} KB (Delta: {} KB)", mem_after, mem_after as isize - mem_before as isize);
-    println!("  Explorer responsiveness:    SHELLDLL_DefView valid = {}", unsafe { IsWindow(discovered.defview_hwnd as HWND) } != 0);
+    println!(
+        "  Final Process WorkingSet:   {} KB (Delta: {} KB)",
+        mem_after,
+        mem_after as isize - mem_before as isize
+    );
+    println!(
+        "  Explorer responsiveness:    SHELLDLL_DefView valid = {}",
+        unsafe { IsWindow(discovered.defview_hwnd as HWND) } != 0
+    );
     println!("  >>> GATE 4: PASS (20 native cycles verified, no handle leakage, no crash)");
 
     // -------------------------------------------------------------------------
@@ -283,11 +349,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- [GATE 5: EXPLORER RESTART RECOVERY & WATCHDOG] ---");
     println!("  Active Explorer PID:        {}", discovered.explorer_pid);
     println!("  Testing WallpaperHostManager::check_health() with live host...");
-    assert!(mgr.check_health(), "Health check must return true when WorkerW is alive");
+    assert!(
+        mgr.check_health(),
+        "Health check must return true when WorkerW is alive"
+    );
 
     println!("  Simulating host window invalidation / recovery trigger...");
     let recovery_status = mgr.trigger_recovery(bounds)?;
-    println!("  Recovery status: state={:?}, active_host={:?}", recovery_status.state, recovery_status.active_host);
+    println!(
+        "  Recovery status: state={:?}, active_host={:?}",
+        recovery_status.state, recovery_status.active_host
+    );
     assert!(recovery_status.is_wallpaper_active || recovery_status.is_fallback);
     println!("  Recovery succeeded without application crash.");
     println!("  >>> GATE 5: PASS (Controlled recovery mechanism verified)");
@@ -298,7 +370,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- [GATE 6: SLEEP / RESUME RESILIENCE] ---");
     println!("  Testing health check responsiveness across simulated suspend/resume window...");
     std::thread::sleep(Duration::from_millis(500));
-    assert!(mgr.check_health(), "Host must remain valid after suspend window");
+    assert!(
+        mgr.check_health(),
+        "Host must remain valid after suspend window"
+    );
     println!("  >>> GATE 6: PASS");
 
     // -------------------------------------------------------------------------
@@ -310,8 +385,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dpi_y = unsafe { GetDeviceCaps(hdc, LOGPIXELSY as i32) };
     unsafe { ReleaseDC(std::ptr::null_mut(), hdc) };
 
-    println!("  Screen DC DPI: {}x{} (Scale: {:.0}%)", dpi_x, dpi_y, (dpi_x as f64 / 96.0) * 100.0);
-    println!("  Hot-plug status: NOT_TESTED — HARDWARE UNAVAILABLE (Physical single display session)");
+    println!(
+        "  Screen DC DPI: {}x{} (Scale: {:.0}%)",
+        dpi_x,
+        dpi_y,
+        (dpi_x as f64 / 96.0) * 100.0
+    );
+    println!(
+        "  Hot-plug status: NOT_TESTED — HARDWARE UNAVAILABLE (Physical single display session)"
+    );
     println!("  Virtual desktop bounds: [0, 0, 3840, 2160]");
     println!("  >>> GATE 7: PASS (Virtual desktop coordinates and boundaries verified)");
 
@@ -320,7 +402,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // -------------------------------------------------------------------------
     println!("\n--- [GATE 8: RESOLUTION / DPI] ---");
     println!("  Active Primary Resolution: 3840 x 2160 (4K UHD)");
-    println!("  DPI Setting:               {} DPI ({:.0}% scaling)", dpi_x, (dpi_x as f64 / 96.0) * 100.0);
+    println!(
+        "  DPI Setting:               {} DPI ({:.0}% scaling)",
+        dpi_x,
+        (dpi_x as f64 / 96.0) * 100.0
+    );
     println!("  Coordinate conversion:     Physical 100,100 -> Bounds validated");
     println!("  >>> GATE 8: PASS");
 
@@ -351,15 +437,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // -------------------------------------------------------------------------
     println!("\n--- [GATE 11: PROGMAN COMPATIBILITY FALLBACK] ---");
     println!("  Testing forced Progman compatibility mode...");
-    let progman_status = mgr.attach(test_hwnd as usize, WallpaperHostPreference::Progman, bounds)?;
+    let progman_status =
+        mgr.attach(test_hwnd as usize, WallpaperHostPreference::Progman, bounds)?;
     println!("  Progman Attach Result:");
     println!("    State:                   {:?}", progman_status.state);
-    println!("    Active Host:             {:?}", progman_status.active_host);
-    println!("    Host HWND:               {:?}", progman_status.host_hwnd);
+    println!(
+        "    Active Host:             {:?}",
+        progman_status.active_host
+    );
+    println!(
+        "    Host HWND:               {:?}",
+        progman_status.host_hwnd
+    );
 
     let progman_parent = unsafe { GetParent(test_hwnd) };
-    println!("    Actual Parent HWND:      0x{:08X} (Progman: 0x{:08X})", progman_parent as usize, discovered.progman_hwnd);
-    assert_eq!(progman_parent as usize, discovered.progman_hwnd, "Parent must match Progman in compatibility mode");
+    println!(
+        "    Actual Parent HWND:      0x{:08X} (Progman: 0x{:08X})",
+        progman_parent as usize, discovered.progman_hwnd
+    );
+    assert_eq!(
+        progman_parent as usize, discovered.progman_hwnd,
+        "Parent must match Progman in compatibility mode"
+    );
     assert_eq!(progman_status.state, WallpaperState::ActiveProgman);
     assert!(progman_status.is_wallpaper_active);
 

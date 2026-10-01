@@ -26,11 +26,17 @@ mod tests {
     #[test]
     fn test_wallpaper_state_display() {
         assert_eq!(WallpaperState::Disabled.to_string(), "DISABLED");
-        assert_eq!(WallpaperState::DiscoveringHost.to_string(), "DISCOVERING_HOST");
+        assert_eq!(
+            WallpaperState::DiscoveringHost.to_string(),
+            "DISCOVERING_HOST"
+        );
         assert_eq!(WallpaperState::Attaching.to_string(), "ATTACHING");
         assert_eq!(WallpaperState::ActiveWorkerW.to_string(), "ACTIVE_WORKERW");
         assert_eq!(WallpaperState::ActiveProgman.to_string(), "ACTIVE_PROGMAN");
-        assert_eq!(WallpaperState::FallbackOverlay.to_string(), "FALLBACK_OVERLAY");
+        assert_eq!(
+            WallpaperState::FallbackOverlay.to_string(),
+            "FALLBACK_OVERLAY"
+        );
         assert_eq!(WallpaperState::Recovering.to_string(), "RECOVERING");
         assert_eq!(WallpaperState::Error.to_string(), "ERROR");
     }
@@ -51,7 +57,10 @@ mod tests {
 
         assert_eq!(status.state, WallpaperState::FallbackOverlay);
         assert_eq!(status.active_host, WallpaperHostKind::DesktopOverlay);
-        assert!(!status.is_wallpaper_active, "Fallback overlay must never claim wallpaper is active!");
+        assert!(
+            !status.is_wallpaper_active,
+            "Fallback overlay must never claim wallpaper is active!"
+        );
         assert!(status.is_fallback);
         assert!(status.host_hwnd.is_none());
     }
@@ -82,6 +91,8 @@ mod tests {
         assert!(!diag.os_caption.is_empty());
         assert!(!diag.os_version.is_empty());
         assert!(!diag.supported_hosts.is_empty());
-        assert!(diag.supported_hosts.contains(&WallpaperHostKind::DesktopOverlay));
+        assert!(diag
+            .supported_hosts
+            .contains(&WallpaperHostKind::DesktopOverlay));
     }
 }

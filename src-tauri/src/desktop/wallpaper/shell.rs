@@ -8,8 +8,8 @@ mod win32 {
     use std::os::windows::ffi::OsStringExt;
     use windows_sys::Win32::Foundation::{BOOL, HWND, LPARAM};
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        EnumWindows, FindWindowExW, FindWindowW, GetClassNameW,
-        GetWindowThreadProcessId, IsWindow, SendMessageTimeoutW, SMTO_NORMAL,
+        EnumWindows, FindWindowExW, FindWindowW, GetClassNameW, GetWindowThreadProcessId, IsWindow,
+        SendMessageTimeoutW, SMTO_NORMAL,
     };
 
     fn to_wide(s: &str) -> Vec<u16> {
@@ -41,7 +41,14 @@ mod win32 {
 
     fn find_defview(parent: HWND) -> Option<HWND> {
         let defview_cls = to_wide("SHELLDLL_DefView");
-        let hwnd = unsafe { FindWindowExW(parent, std::ptr::null_mut(), defview_cls.as_ptr(), std::ptr::null()) };
+        let hwnd = unsafe {
+            FindWindowExW(
+                parent,
+                std::ptr::null_mut(),
+                defview_cls.as_ptr(),
+                std::ptr::null(),
+            )
+        };
         if !hwnd.is_null() && unsafe { IsWindow(hwnd) } != 0 {
             Some(hwnd)
         } else {
@@ -75,7 +82,12 @@ mod win32 {
     unsafe extern "system" fn enum_windows_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
         let ctx = &mut *(lparam as *mut EnumContext);
         let defview_cls = to_wide("SHELLDLL_DefView");
-        let defview = FindWindowExW(hwnd, std::ptr::null_mut(), defview_cls.as_ptr(), std::ptr::null());
+        let defview = FindWindowExW(
+            hwnd,
+            std::ptr::null_mut(),
+            defview_cls.as_ptr(),
+            std::ptr::null(),
+        );
 
         if !defview.is_null() {
             ctx.defview_hwnd = defview;
@@ -83,7 +95,12 @@ mod win32 {
 
             // In legacy Windows 10, the target WorkerW is the next WorkerW after this one
             let worker_cls = to_wide("WorkerW");
-            let next_worker = FindWindowExW(std::ptr::null_mut(), hwnd, worker_cls.as_ptr(), std::ptr::null());
+            let next_worker = FindWindowExW(
+                std::ptr::null_mut(),
+                hwnd,
+                worker_cls.as_ptr(),
+                std::ptr::null(),
+            );
             if !next_worker.is_null() {
                 ctx.workerw_hwnd = next_worker;
                 return 0; // stop enumeration
@@ -101,17 +118,30 @@ mod win32 {
 
         // 1. Check if DefView is directly inside Progman (Modern Win11)
         if let Some(defview) = find_defview(progman) {
-            debug!("Discovered SHELLDLL_DefView directly inside Progman: 0x{:08X}", defview as usize);
+            debug!(
+                "Discovered SHELLDLL_DefView directly inside Progman: 0x{:08X}",
+                defview as usize
+            );
 
             // Trigger 0x052C so Explorer creates/activates wallpaper worker if not already
             let _ = trigger_spawn_worker(progman);
 
             // Look for child WorkerW inside Progman
             let worker_cls = to_wide("WorkerW");
-            let child_worker = unsafe { FindWindowExW(progman, std::ptr::null_mut(), worker_cls.as_ptr(), std::ptr::null()) };
+            let child_worker = unsafe {
+                FindWindowExW(
+                    progman,
+                    std::ptr::null_mut(),
+                    worker_cls.as_ptr(),
+                    std::ptr::null(),
+                )
+            };
 
             if !child_worker.is_null() && unsafe { IsWindow(child_worker) } != 0 {
-                debug!("Discovered modern Win11 child WorkerW: 0x{:08X}", child_worker as usize);
+                debug!(
+                    "Discovered modern Win11 child WorkerW: 0x{:08X}",
+                    child_worker as usize
+                );
                 return Some(WallpaperHostInfo {
                     host_kind: WallpaperHostKind::WorkerW,
                     host_hwnd: child_worker as usize,
@@ -148,14 +178,14 @@ mod win32 {
         };
 
         unsafe {
-            EnumWindows(
-                Some(enum_windows_callback),
-                &mut ctx as *mut _ as LPARAM,
-            );
+            EnumWindows(Some(enum_windows_callback), &mut ctx as *mut _ as LPARAM);
         }
 
         if !ctx.workerw_hwnd.is_null() && unsafe { IsWindow(ctx.workerw_hwnd) } != 0 {
-            debug!("Discovered legacy Win10 sibling WorkerW: 0x{:08X}", ctx.workerw_hwnd as usize);
+            debug!(
+                "Discovered legacy Win10 sibling WorkerW: 0x{:08X}",
+                ctx.workerw_hwnd as usize
+            );
             Some(WallpaperHostInfo {
                 host_kind: WallpaperHostKind::WorkerW,
                 host_hwnd: ctx.workerw_hwnd as usize,
@@ -248,5 +278,11 @@ pub fn get_system_diagnostics_snapshot() -> (String, String, String, String, Str
     let display_version = "25H2".to_string();
     let explorer_version = "10.0.26100.8875".to_string();
 
-    (os_caption, os_version, build_number, display_version, explorer_version)
+    (
+        os_caption,
+        os_version,
+        build_number,
+        display_version,
+        explorer_version,
+    )
 }

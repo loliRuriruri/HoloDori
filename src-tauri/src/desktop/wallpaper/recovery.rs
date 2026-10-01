@@ -1,10 +1,10 @@
+use super::host::WallpaperHostManager;
+use super::types::WallpaperBounds;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 use tracing::{info, warn};
-use super::host::WallpaperHostManager;
-use super::types::WallpaperBounds;
 
 #[derive(Default)]
 pub struct WallpaperWatchdog {
@@ -18,12 +18,7 @@ impl WallpaperWatchdog {
         }
     }
 
-    pub fn start(
-        &self,
-        app: AppHandle,
-        manager: WallpaperHostManager,
-        bounds: WallpaperBounds,
-    ) {
+    pub fn start(&self, app: AppHandle, manager: WallpaperHostManager, bounds: WallpaperBounds) {
         if self.running.swap(true, Ordering::SeqCst) {
             return; // Already running
         }

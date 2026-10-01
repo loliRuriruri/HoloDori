@@ -13,10 +13,10 @@ mod win32 {
     use super::*;
     use windows_sys::Win32::Foundation::HWND;
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        GetParent, GetWindowLongW, SetParent, SetWindowLongW, SetWindowPos, GWL_EXSTYLE,
-        GWL_STYLE, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
-        SWP_SHOWWINDOW, WS_CHILD, WS_CLIPSIBLINGS, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
-        WS_EX_TRANSPARENT, WS_POPUP, WS_VISIBLE,
+        GetParent, GetWindowLongW, SetParent, SetWindowLongW, SetWindowPos, GWL_EXSTYLE, GWL_STYLE,
+        SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW,
+        WS_CHILD, WS_CLIPSIBLINGS, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT, WS_POPUP,
+        WS_VISIBLE,
     };
 
     pub fn attach(
@@ -39,9 +39,10 @@ mod win32 {
             };
 
             // Convert to child window of WorkerW
-            let new_style = (orig_style & !(WS_POPUP as i32)) | (WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS) as i32;
-            let new_ex_style = orig_ex_style
-                | (WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) as i32;
+            let new_style = (orig_style & !(WS_POPUP as i32))
+                | (WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS) as i32;
+            let new_ex_style =
+                orig_ex_style | (WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW) as i32;
 
             SetWindowLongW(child, GWL_STYLE, new_style);
             SetWindowLongW(child, GWL_EXSTYLE, new_ex_style);
