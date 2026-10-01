@@ -26,6 +26,9 @@ sha2 = "0.10"
 tempfile = "3"
 regex = "1"
 chrono = { version = "0.4", features = ["serde"] }
+aes = "0.8"
+cbc = "0.1"
+md-5 = "0.10"
 
 [dev-dependencies]
 tempfile = "3"

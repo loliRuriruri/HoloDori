@@ -1,0 +1,104 @@
+{
+  "revision_id": 20,
+  "url_format": "https://asset.review-game-hololive-dreams.com/{o}",
+  "total_asset_bundles": 25419,
+  "total_resources": 19480,
+  "live2d_model_bundles": 200,
+  "live2d_motion_bundles": 202,
+  "live2d_expression_bundles": 850,
+  "total_live2d_bundles": 1252,
+  "language_distribution": {
+    "chs": 1511,
+    "cht": 1507,
+    "eng": 1513,
+    "ind": 1513,
+    "kor": 1514,
+    "shared_jpn": 17861
+  },
+  "known_models": {
+    "00007_001": {
+      "id": 32330,
+      "name": "live2d_mdl_00007-nrml-0008-00",
+      "size": 3265045,
+      "crc": 1794541896,
+      "md5": "a163f3d6bfb59ba534ab1afbd3896120",
+      "dependencies": [],
+      "object_name": "DCgZ7m",
+      "addresses": [
+        "live2d_mdl_00007-nrml-0008-00"
+      ]
+    },
+    "00007_002": {
+      "id": 32331,
+      "name": "live2d_mdl_00007-uniq-0008-00",
+      "size": 4090037,
+      "crc": 1282596040,
+      "md5": "320c90289fd44f84c06fc549613be299",
+      "dependencies": [],
+      "object_name": "GpcGIC",
+      "addresses": [
+        "live2d_mdl_00007-uniq-0008-00"
+      ]
+    },
+    "00007_003": {
+      "id": 32329,
+      "name": "live2d_mdl_00007-cmmn-0000-00",
+      "size": 4783779,
+      "crc": 1878312568,
+      "md5": "82e146054a967a8218adedc271a6ce49",
+      "dependencies": [],
+      "object_name": "PquS8X",
+      "addresses": [
+        "live2d_mdl_00007-cmmn-0000-00"
+      ]
+    },
+    "00010_001": {
+      "id": 32334,
+      "name": "live2d_mdl_00010-nrml-0010-00",
+      "size": 4977814,
+      "crc": 203409830,
+      "md5": "32855bd6ceea1b018634d3c0a0805b34",
+      "dependencies": [],
+      "object_name": "LTdJTw",
+      "addresses": [
+        "live2d_mdl_00010-nrml-0010-00"
+      ]
+    },
+    "00010_002": {
+      "id": 32335,
+      "name": "live2d_mdl_00010-uniq-0010-00",
+      "size": 5807081,
+      "crc": 554304958,
+      "md5": "0029d986e108e589fa350954cc4b5c49",
+      "dependencies": [],
+      "object_name": "1nMrFM",
+      "addresses": [
+        "live2d_mdl_00010-uniq-0010-00"
+      ]
+    },
+    "00010_004": {
+      "id": 44005,
+      "name": "live2d_mdl_00010-uniq-0069-00",
+      "size": 4084627,
+      "crc": 304060565,
+      "md5": "5cae6384d2502c8968d5461455ba91e1",
+      "dependencies": [],
+      "object_name": "Cfywj9",
+      "addresses": [
+        "live2d_mdl_00010-uniq-0069-00"
+      ]
+    },
+    "00012_004": {
+      "id": 32342,
+      "name": "live2d_mdl_00012-uniq-0062-00",
+      "size": 3549594,
+      "crc": 419105665,
+      "md5": "192a1f198b9ce59fc7454ce9d2958b3c",
+      "dependencies": [],
+      "object_name": "RKSpI1",
+      "addresses": [
+        "live2d_mdl_00012-uniq-0062-00"
+      ]
+    }
+  }
+}

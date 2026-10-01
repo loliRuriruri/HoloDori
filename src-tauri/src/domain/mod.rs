@@ -8,6 +8,7 @@ pub mod extractor;
 pub mod library;
 pub mod manifest;
 pub mod matcher;
+pub mod octo;
 pub mod parser;
 pub mod scanner;
 pub mod types;
