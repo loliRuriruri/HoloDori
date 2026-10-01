@@ -119,6 +119,9 @@ impl ConversionPipeline {
             return ModelBuildReport {
                 model_id: pair.id.clone(),
                 status: BuildStatus::Fail,
+                moc_version: crate::domain::types::MocVersion::Invalid,
+                runtime_validation: crate::domain::types::RuntimeValidationStatus::NotTested,
+                runtime_details: None,
                 input_files: vec![pair.model_source.clone()],
                 output_files: Vec::new(),
                 output_directory: None,
@@ -137,6 +140,9 @@ impl ConversionPipeline {
             return ModelBuildReport {
                 model_id: pair.id.clone(),
                 status: BuildStatus::Fail,
+                moc_version: crate::domain::types::MocVersion::Invalid,
+                runtime_validation: crate::domain::types::RuntimeValidationStatus::NotTested,
+                runtime_details: None,
                 input_files: vec![pair.model_source.clone()],
                 output_files: Vec::new(),
                 output_directory: None,
@@ -151,12 +157,19 @@ impl ConversionPipeline {
         }
 
         match PackageBuilder::build_package(pair, output_root, self.config.conflict_policy) {
-            Ok(build_result) => {
-                PackageValidator::validate_package(&build_result, pair, source_hashes)
-            }
+            Ok(build_result) => PackageValidator::validate_package(
+                &build_result,
+                pair,
+                source_hashes,
+                crate::domain::types::RuntimeValidationStatus::NotTested,
+                None,
+            ),
             Err(e) => ModelBuildReport {
                 model_id: pair.id.clone(),
                 status: BuildStatus::Fail,
+                moc_version: crate::domain::types::MocVersion::Invalid,
+                runtime_validation: crate::domain::types::RuntimeValidationStatus::NotTested,
+                runtime_details: None,
                 input_files: vec![pair.model_source.clone()],
                 output_files: Vec::new(),
                 output_directory: None,

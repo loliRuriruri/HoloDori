@@ -414,8 +414,16 @@ export const App: React.FC = () => {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>
-                    Model: {r.model_id}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>
+                      Model: {r.model_id}
+                    </div>
+                    <span style={{ fontSize: '0.75rem', background: '#1e3a8a', color: '#93c5fd', padding: '2px 8px', borderRadius: '4px' }}>
+                      MOC: {typeof r.moc_version === 'object' && 'Known' in r.moc_version ? r.moc_version.Known.version_label : (typeof r.moc_version === 'object' && 'Unknown' in r.moc_version ? `Unknown (0x${r.moc_version.Unknown})` : 'Invalid')}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', background: r.runtime_validation === 'Pass' ? '#064e3b' : (r.runtime_validation === 'Fail' ? '#7f1d1d' : '#334155'), color: '#f8fafc', padding: '2px 8px', borderRadius: '4px' }}>
+                      Runtime: {r.runtime_validation}
+                    </span>
                   </div>
                   <span className={`badge badge-${r.status.toLowerCase().replace(/_/g, '-')}`}>
                     {r.status}

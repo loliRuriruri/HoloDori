@@ -21,3 +21,12 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Real Game Assets Policy (Never committed)
+samples/
+real_samples/
+local_samples/
+output/
+*.moc3
+!src-tauri/tests/fixtures/**
+

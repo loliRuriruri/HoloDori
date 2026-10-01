@@ -4,14 +4,16 @@ use tempfile::tempdir;
 
 use holodori_core::domain::builder::{sanitize_filename, PackageBuilder};
 use holodori_core::domain::error::ErrorCode;
-use holodori_core::domain::extractor::{extract_and_stage_moc, extract_bytes};
+use holodori_core::domain::extractor::{
+    extract_and_stage_moc, extract_bytes, validate_moc3_candidate,
+};
 use holodori_core::domain::manifest::Model3Manifest;
 use holodori_core::domain::matcher::TextureMatcher;
 use holodori_core::domain::parser::{IdentityParser, NamingRuleConfig};
 use holodori_core::domain::scanner::compute_sha256;
 use holodori_core::domain::types::{
-    BuildStatus, ConflictPolicy, FileClassification, MatchConfidence, MatchedPair, ModelSourceType,
-    ScannedFile,
+    BuildStatus, ConflictPolicy, FileClassification, MatchConfidence, MatchedPair, MocVersion,
+    ModelSourceType, RuntimeValidationStatus, ScannedFile,
 };
 use holodori_core::domain::{ConversionPipeline, PipelineConfig};
 
@@ -71,7 +73,7 @@ fn test_valid_synthetic_bytes() {
     assert_eq!(extracted, synthetic_moc);
 
     let staged = extract_and_stage_moc(&json_path).unwrap();
-    assert_eq!(staged.version, 3);
+    assert_eq!(staged.version, MocVersion::Known(3));
     assert!(staged.temp_path.is_file());
     let _ = fs::remove_file(staged.temp_path);
 }
@@ -345,14 +347,18 @@ fn test_golden_fixture_pipeline() {
         .run_batch(&[input_dir.path().to_path_buf()], output_dir.path())
         .unwrap();
 
-    // Assert overall pass
+    // Assert overall pass (PassWithWarnings because Level 3 Runtime is NotTested)
     assert_eq!(batch_report.total_models, 1);
-    assert_eq!(batch_report.passed, 1);
+    assert_eq!(batch_report.passed_with_warnings, 1);
     assert_eq!(batch_report.failed, 0);
-    assert_eq!(batch_report.overall_status, BuildStatus::Pass);
+    assert_eq!(batch_report.overall_status, BuildStatus::PassWithWarnings);
 
     let report = &batch_report.reports[0];
-    assert_eq!(report.status, BuildStatus::Pass);
+    assert_eq!(report.status, BuildStatus::PassWithWarnings);
+    assert_eq!(
+        report.runtime_validation,
+        RuntimeValidationStatus::NotTested
+    );
     assert_eq!(report.model_id, "12345_001");
 
     // Verify expected package directory layout:
@@ -382,8 +388,8 @@ fn test_golden_fixture_pipeline() {
         vec!["textures/texture_00.png"]
     );
 
-    // Verify 10-stage validation checklist: all 10 stages must PASS
-    assert_eq!(report.validation_stages.len(), 10);
+    // Verify 11-stage validation checklist (Level 1, Level 2 [A-I], Level 3): all stages must PASS
+    assert_eq!(report.validation_stages.len(), 11);
     for stage in &report.validation_stages {
         assert!(
             stage.passed,
@@ -425,8 +431,8 @@ fn test_reproducibility() {
         .run_batch(&[input_dir.path().to_path_buf()], out_dir_2.path())
         .unwrap();
 
-    assert_eq!(report1.overall_status, BuildStatus::Pass);
-    assert_eq!(report2.overall_status, BuildStatus::Pass);
+    assert_eq!(report1.overall_status, BuildStatus::PassWithWarnings);
+    assert_eq!(report2.overall_status, BuildStatus::PassWithWarnings);
 
     let pkg1_moc = out_dir_1.path().join("12345_001").join("12345_001.moc3");
     let pkg2_moc = out_dir_2.path().join("12345_001").join("12345_001.moc3");
@@ -447,4 +453,161 @@ fn test_reproducibility() {
         fs::read_to_string(pkg1_manifest).unwrap(),
         fs::read_to_string(pkg2_manifest).unwrap()
     );
+}
+
+// 19. Known MOC3 versions test (versions 1..=5)
+#[test]
+fn test_moc3_known_versions() {
+    let dummy_path = PathBuf::from("model.moc3");
+    for v in 1..=5 {
+        let bytes = create_synthetic_moc3_bytes(v);
+        let version = validate_moc3_candidate(&bytes, &dummy_path).unwrap();
+        assert!(version.is_known());
+        assert_eq!(version.raw_byte(), Some(v));
+    }
+}
+
+// 20. Unknown future MOC3 version test (version 6/7 accepted with warning)
+#[test]
+fn test_moc3_unknown_future_version() {
+    let dummy_path = PathBuf::from("model.moc3");
+    let bytes = create_synthetic_moc3_bytes(6);
+    let version = validate_moc3_candidate(&bytes, &dummy_path).unwrap();
+    assert_eq!(version, MocVersion::Unknown(6));
+    assert!(!version.is_known());
+    assert!(version.is_valid_candidate());
+}
+
+// 21. Invalid MOC3 version byte zero test
+#[test]
+fn test_moc3_invalid_version_zero() {
+    let dummy_path = PathBuf::from("model.moc3");
+    let bytes = create_synthetic_moc3_bytes(0);
+    let err = validate_moc3_candidate(&bytes, &dummy_path).unwrap_err();
+    assert_eq!(err.code(), ErrorCode::ErrMocHeaderInvalid);
+}
+
+// 22. Outfit 004 non-hardcoded behavior test
+#[test]
+fn test_outfit_004_non_hardcoded() {
+    let parser = IdentityParser::new(NamingRuleConfig::default());
+    let id = parser.parse_name("model_12345_004").unwrap();
+    assert_eq!(id.character_id, "12345");
+    assert_eq!(id.outfit_id, "004");
+    assert_eq!(id.style_tag, None); // Must not default to swimsuit without evidence
+}
+
+// 23. Sequenced multi-atlas textures test
+#[test]
+fn test_multi_atlas_textures() {
+    let input_dir = tempdir().unwrap();
+    let output_dir = tempdir().unwrap();
+
+    let model_json = input_dir.path().join("model_12345_001.json");
+    let synthetic_moc = create_synthetic_moc3_bytes(3);
+    fs::write(&model_json, create_synthetic_model_json(&synthetic_moc)).unwrap();
+
+    // Two sequenced atlas textures
+    let tex0 = input_dir.path().join("texture_12345_001_00.png");
+    let tex1 = input_dir.path().join("texture_12345_001_01.png");
+    fs::write(&tex0, SYNTHETIC_PNG_BYTES).unwrap();
+    fs::write(&tex1, SYNTHETIC_PNG_BYTES).unwrap();
+
+    let pipeline = ConversionPipeline::new(PipelineConfig::default());
+    let report = pipeline
+        .run_batch(&[input_dir.path().to_path_buf()], output_dir.path())
+        .unwrap();
+
+    assert_eq!(report.overall_status, BuildStatus::PassWithWarnings);
+    assert_eq!(report.reports.len(), 1);
+    let m_report = &report.reports[0];
+    assert_eq!(m_report.output_files.len(), 4); // moc3 + model3.json + 2 textures
+
+    let manifest_path = output_dir
+        .path()
+        .join("12345_001")
+        .join("12345_001.model3.json");
+    let content = fs::read_to_string(&manifest_path).unwrap();
+    let manifest = Model3Manifest::from_json_str(&content).unwrap();
+    assert_eq!(manifest.file_references.textures.len(), 2);
+    assert_eq!(
+        manifest.file_references.textures,
+        vec!["textures/texture_00.png", "textures/texture_01.png"]
+    );
+}
+
+// 24. Explicit 3-level validation report test
+#[test]
+fn test_level_1_level_2_level_3_validation_report() {
+    let input_dir = tempdir().unwrap();
+    let output_dir = tempdir().unwrap();
+
+    let model_json = input_dir.path().join("model_12345_001_nrml.json");
+    let synthetic_moc = create_synthetic_moc3_bytes(3);
+    fs::write(&model_json, create_synthetic_model_json(&synthetic_moc)).unwrap();
+
+    let tex_png = input_dir.path().join("texture_12345_001_nrml.png");
+    fs::write(&tex_png, SYNTHETIC_PNG_BYTES).unwrap();
+
+    let pipeline = ConversionPipeline::new(PipelineConfig::default());
+    let report = pipeline
+        .run_batch(&[input_dir.path().to_path_buf()], output_dir.path())
+        .unwrap();
+
+    let m_report = &report.reports[0];
+    assert_eq!(m_report.status, BuildStatus::PassWithWarnings);
+    assert_eq!(m_report.moc_version, MocVersion::Known(3));
+    assert_eq!(
+        m_report.runtime_validation,
+        RuntimeValidationStatus::NotTested
+    );
+
+    // Verify stage labels distinguish Level 1, Level 2, Level 3
+    let stage_names: Vec<_> = m_report
+        .validation_stages
+        .iter()
+        .map(|s| s.stage_name.as_str())
+        .collect();
+    assert!(stage_names.iter().any(|n| n.starts_with("Level 1")));
+    assert!(stage_names.iter().any(|n| n.starts_with("Level 2")));
+    assert!(stage_names.iter().any(|n| n.starts_with("Level 3")));
+}
+
+// 25. Level 3 Runtime Pass yields clean Pass status without warnings
+#[test]
+fn test_level_3_runtime_pass_yields_clean_pass() {
+    let input_dir = tempdir().unwrap();
+    let output_dir = tempdir().unwrap();
+
+    let model_json = input_dir.path().join("model_12345_001_nrml.json");
+    let synthetic_moc = create_synthetic_moc3_bytes(3);
+    fs::write(&model_json, create_synthetic_model_json(&synthetic_moc)).unwrap();
+
+    let tex_png = input_dir.path().join("texture_12345_001_nrml.png");
+    fs::write(&tex_png, SYNTHETIC_PNG_BYTES).unwrap();
+
+    let pipeline = ConversionPipeline::new(PipelineConfig::default());
+    let mut files = pipeline
+        .scan_inputs(&[input_dir.path().to_path_buf()])
+        .unwrap();
+    pipeline.classify_candidates(&mut files).unwrap();
+    let (pairs, source_hashes) = pipeline.match_pairs(&files).unwrap();
+    assert_eq!(pairs.len(), 1);
+
+    let build_result =
+        PackageBuilder::build_package(&pairs[0], output_dir.path(), ConflictPolicy::Overwrite)
+            .unwrap();
+
+    let report = holodori_core::domain::validator::PackageValidator::validate_package(
+        &build_result,
+        &pairs[0],
+        &source_hashes,
+        RuntimeValidationStatus::Pass,
+        Some("Simulated successful runtime rendering".to_string()),
+    );
+
+    assert_eq!(report.status, BuildStatus::Pass);
+    assert_eq!(report.runtime_validation, RuntimeValidationStatus::Pass);
+    assert!(report.warnings.is_empty());
+    assert_eq!(report.errors.len(), 0);
 }

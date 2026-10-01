@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use tempfile::NamedTempFile;
 
 use crate::domain::error::{DomainError, ErrorCode};
+use crate::domain::types::MocVersion;
 
 pub const MOC3_MAGIC: &[u8; 4] = b"MOC3";
 pub const MIN_MOC3_SIZE_BYTES: usize = 64;
@@ -15,7 +16,7 @@ pub struct ExtractedBinary {
     pub bytes: Vec<u8>,
     pub temp_path: PathBuf,
     pub sha256: String,
-    pub version: u8,
+    pub version: MocVersion,
 }
 
 /// Recursively traverses a JSON Value looking for any key named `_bytes` with an array value.
@@ -130,8 +131,11 @@ pub fn extract_bytes(json_path: &Path) -> Result<Vec<u8>, DomainError> {
 /// Validates binary candidate against confirmed Live2D Cubism MOC3 specifications:
 /// - Minimum payload length (>= 64 bytes)
 /// - MOC3 magic bytes (ASCII: "MOC3")
-/// - Supported Cubism version byte (0x01..=0x06)
-pub fn validate_moc3_candidate(bytes: &[u8], path_context: &Path) -> Result<u8, DomainError> {
+/// - Valid version classification (Known: 1..=5, Unknown: raw, Invalid: corrupt)
+pub fn validate_moc3_candidate(
+    bytes: &[u8],
+    path_context: &Path,
+) -> Result<MocVersion, DomainError> {
     if bytes.len() < MIN_MOC3_SIZE_BYTES {
         return Err(DomainError::InvalidMocHeader {
             code: ErrorCode::ErrMocHeaderInvalid,
@@ -156,12 +160,15 @@ pub fn validate_moc3_candidate(bytes: &[u8], path_context: &Path) -> Result<u8, 
         });
     }
 
-    let version = bytes[4];
-    if !(1..=6).contains(&version) {
+    let version = MocVersion::from_header(bytes);
+    if !version.is_valid_candidate() {
         return Err(DomainError::InvalidMocHeader {
             code: ErrorCode::ErrMocHeaderInvalid,
             path: path_context.to_path_buf(),
-            reason: format!("Unsupported Cubism version byte: 0x{:02x}", version),
+            reason: format!(
+                "Invalid or zero Cubism version byte in header: 0x{:02x}",
+                bytes[4]
+            ),
         });
     }
 

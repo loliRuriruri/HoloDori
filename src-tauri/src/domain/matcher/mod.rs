@@ -132,6 +132,8 @@ impl TextureMatcher {
             .collect();
 
         if top_candidates.len() > 1 {
+            let mut candidate_paths: Vec<_> =
+                top_candidates.iter().map(|c| c.path.clone()).collect();
             let candidate_names: Vec<String> = top_candidates
                 .iter()
                 .filter_map(|c| {
@@ -141,7 +143,25 @@ impl TextureMatcher {
                         .map(|s| s.to_string())
                 })
                 .collect();
-            let candidate_paths: Vec<_> = top_candidates.iter().map(|c| c.path.clone()).collect();
+
+            // Check if candidates constitute a sequenced multi-atlas set (e.g. texture_00, texture_01)
+            if is_multi_atlas_set(&candidate_paths) {
+                candidate_paths.sort();
+                return MatchedPair {
+                    id: model_id,
+                    model_source: model_path.to_path_buf(),
+                    model_type,
+                    identity: identity.clone(),
+                    textures: candidate_paths.clone(),
+                    match_confidence: MatchConfidence::High,
+                    evidence: vec![format!(
+                        "Sequenced multi-atlas texture set detected ({} atlases): {:?}",
+                        candidate_paths.len(),
+                        candidate_names
+                    )],
+                    warnings: Vec::new(),
+                };
+            }
 
             return MatchedPair {
                 id: model_id,
@@ -181,4 +201,36 @@ impl TextureMatcher {
             warnings: Vec::new(),
         }
     }
+}
+
+fn is_multi_atlas_set(paths: &[PathBuf]) -> bool {
+    if paths.len() <= 1 {
+        return false;
+    }
+    let re = match regex::Regex::new(r"^(.*?)(?:[_\-\s]?(?:texture)?)[_\-]?(\d{1,2})$") {
+        Ok(r) => r,
+        Err(_) => return false,
+    };
+    let mut prefixes = Vec::new();
+    let mut indices = Vec::new();
+
+    for p in paths {
+        let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+        if let Some(caps) = re.captures(stem) {
+            prefixes.push(caps.get(1).map(|m| m.as_str()).unwrap_or(""));
+            if let Ok(idx) = caps.get(2).map(|m| m.as_str()).unwrap_or("").parse::<u32>() {
+                indices.push(idx);
+            }
+        }
+    }
+
+    if prefixes.len() == paths.len() && indices.len() == paths.len() {
+        let first_prefix = prefixes[0];
+        if prefixes.iter().all(|&p| p == first_prefix) {
+            indices.sort_unstable();
+            indices.dedup();
+            return indices.len() == paths.len() && indices[0] <= 1;
+        }
+    }
+    false
 }

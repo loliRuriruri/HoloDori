@@ -13,6 +13,13 @@ export type ConflictPolicy = 'Skip' | 'UniqueSuffix' | 'Overwrite';
 
 export type BuildStatus = 'Pass' | 'PassWithWarnings' | 'Fail';
 
+export type MocVersion =
+  | { Known: { raw: number; version_label: string } }
+  | { Unknown: number }
+  | 'Invalid';
+
+export type RuntimeValidationStatus = 'NotTested' | 'Pass' | 'Fail';
+
 export interface ParsedIdentity {
   character_id: string;
   outfit_id: string;
@@ -42,6 +49,9 @@ export interface ValidationStageResult {
 export interface ModelBuildReport {
   model_id: string;
   status: BuildStatus;
+  moc_version: MocVersion;
+  runtime_validation: RuntimeValidationStatus;
+  runtime_details: string | null;
   input_files: string[];
   output_files: string[];
   output_directory: string | null;

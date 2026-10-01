@@ -59,4 +59,23 @@ HDM.AGENT.1 represents the completion of Phase 1: a standalone desktop applicati
   - `12345_001.model3.json` references `12345_001.moc3` and `textures/texture_00.png`.
   - Both target files exist and are readable.
   - No absolute paths present.
-  - Build status: `PASS`.
+  - Build status: `PASS` (or `PASS_WITH_WARNINGS` with advisory runtime warning when Level 3 is `NOT_TESTED`).
+
+---
+
+## Acceptance Gate: HDM.AGENT.1R — Real Sample Validation & Hardening
+
+HDM.AGENT.1R hardens the conversion pipeline against real-world sample behaviors and establishes an explicit 3-level validation architecture.
+
+### Enhanced Gates in AGENT.1R
+
+| Gate ID | Area | Verification Method | Pass Criteria | Status |
+|---|---|---|---|---|
+| **AG1R-1** | Typed MOC3 Versioning | Header inspection & typed enum | `MocVersion::Known(1..=5)` recognized; unknown future versions (e.g. 6) treated as candidate with warning (`Unknown(raw)`); invalid versions (`0x00`) rejected. | **PASS** |
+| **AG1R-2** | 3-Level Validation Model | Structured pipeline report | Explicit separation: Level 1 (Container Candidate), Level 2 (Package Structural Validation), Level 3 (Cubism Runtime Validation). | **PASS** |
+| **AG1R-3** | Runtime State Honesty | `RuntimeValidationStatus` | `NOT_TESTED` explicitly recorded without false `PASS` conversion; generates `PassWithWarnings`. | **PASS** |
+| **AG1R-4** | Sequenced Multi-Atlas Textures | Atlas matching algorithm | Sequenced textures (`_00`, `_01`) matched in order without false duplicate collision. | **PASS** |
+| **AG1R-5** | Outfit 004 Non-Hardcoding | Naming parser rules | Outfit `004` never hardcoded to swimsuit without explicit evidence; handled deterministically. | **PASS** |
+| **AG1R-6** | Real Asset Protection | `.gitignore` enforcement | Zero proprietary or copyrighted assets committed or staged in git. | **PASS** |
+| **AG1R-7** | Zero Regression | Full test suite (`cargo test --workspace`) | 24 tests passing (17 original + 7 AGENT.1R hardening tests). | **PASS** |
+| **AG1R-8** | Level 3 Runtime Status | Live2D viewer / Cubism Core | Awaiting manual external Live2D viewer rendering or official Live2D Core test. | **PARTIAL — PENDING** |

@@ -64,6 +64,78 @@ pub struct MatchedPair {
     pub warnings: Vec<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum MocVersion {
+    /// Known official Live2D Cubism version (1..=5)
+    Known(u8),
+    /// Syntactically valid MOC3 with unverified/future version identifier
+    Unknown(u8),
+    /// Invalid candidate (missing magic or invalid header)
+    #[default]
+    Invalid,
+}
+
+impl MocVersion {
+    pub fn from_header(bytes: &[u8]) -> Self {
+        if bytes.len() < 5 || &bytes[0..4] != b"MOC3" {
+            return MocVersion::Invalid;
+        }
+        match bytes[4] {
+            1..=5 => MocVersion::Known(bytes[4]),
+            raw if raw > 0 => MocVersion::Unknown(raw),
+            _ => MocVersion::Invalid,
+        }
+    }
+
+    pub fn version_label(&self) -> Option<&'static str> {
+        match self {
+            MocVersion::Known(1) => Some("Cubism 3.00"),
+            MocVersion::Known(2) => Some("Cubism 3.03"),
+            MocVersion::Known(3) => Some("Cubism 4.00"),
+            MocVersion::Known(4) => Some("Cubism 4.02"),
+            MocVersion::Known(5) => Some("Cubism 5.00"),
+            _ => None,
+        }
+    }
+
+    pub fn is_known(&self) -> bool {
+        matches!(self, MocVersion::Known(_))
+    }
+
+    pub fn is_valid_candidate(&self) -> bool {
+        !matches!(self, MocVersion::Invalid)
+    }
+
+    pub fn raw_byte(&self) -> Option<u8> {
+        match self {
+            MocVersion::Known(raw) => Some(*raw),
+            MocVersion::Unknown(raw) => Some(*raw),
+            MocVersion::Invalid => None,
+        }
+    }
+
+    pub fn display_label(&self) -> String {
+        match self {
+            MocVersion::Known(raw) => {
+                let label = self.version_label().unwrap_or("Cubism Known");
+                format!("{} (0x{:02x})", label, raw)
+            }
+            MocVersion::Unknown(raw) => {
+                format!("Unknown/Future Version (0x{:02x})", raw)
+            }
+            MocVersion::Invalid => "Invalid MOC3".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum RuntimeValidationStatus {
+    #[default]
+    NotTested,
+    Pass,
+    Fail,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationStageResult {
     pub stage_name: String,
@@ -82,6 +154,9 @@ pub enum BuildStatus {
 pub struct ModelBuildReport {
     pub model_id: String,
     pub status: BuildStatus,
+    pub moc_version: MocVersion,
+    pub runtime_validation: RuntimeValidationStatus,
+    pub runtime_details: Option<String>,
     pub input_files: Vec<PathBuf>,
     pub output_files: Vec<PathBuf>,
     pub output_directory: Option<PathBuf>,
