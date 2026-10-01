@@ -41,7 +41,11 @@ src-tauri/src/
     ├── matcher/            # Multi-evidence texture association
     ├── manifest/           # Live2D Cubism model3.json generator
     ├── builder/            # Output packaging & atomic collision handling
-    └── validator/          # 10-stage integrity and relative reference validation
+    ├── validator/          # 10-stage integrity and relative reference validation
+    └── library/            # Library management, metadata cache, batch build manager
+        ├── mod.rs          # CharacterLibrary & OutfitEntry deterministic grouping
+        ├── cache.rs        # Lightweight scan metadata cache (LibraryScanCache)
+        └── batch.rs        # BatchBuildManager with cancellation & progress events
 ```
 
 ### Decoupled Engine

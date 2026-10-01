@@ -5,6 +5,7 @@ pub mod builder;
 pub mod classifier;
 pub mod error;
 pub mod extractor;
+pub mod library;
 pub mod manifest;
 pub mod matcher;
 pub mod parser;
@@ -18,12 +19,14 @@ use std::path::{Path, PathBuf};
 use crate::domain::builder::PackageBuilder;
 use crate::domain::classifier::classify_all;
 use crate::domain::error::DomainError;
+use crate::domain::library::cache::LibraryScanCache;
 use crate::domain::matcher::TextureMatcher;
 use crate::domain::parser::{IdentityParser, NamingRuleConfig};
 use crate::domain::scanner::{scan_paths, ScannerOptions};
 use crate::domain::types::{
-    BatchBuildReport, BuildStatus, ConflictPolicy, FileClassification, MatchConfidence,
-    MatchedPair, ModelBuildReport, ModelSourceType, ScannedFile, ValidationStageResult,
+    BatchBuildReport, BuildStatus, CharacterLibrary, ConflictPolicy, FileClassification,
+    LibraryScanReport, MatchConfidence, MatchedPair, ModelBuildReport, ModelSourceType,
+    ScannedFile, ValidationStageResult,
 };
 use crate::domain::validator::PackageValidator;
 
@@ -230,5 +233,119 @@ impl ConversionPipeline {
             reports,
             overall_status,
         })
+    }
+
+    /// Scans input paths into a CharacterLibrary, utilizing metadata caching.
+    pub fn scan_library(
+        &self,
+        paths: &[PathBuf],
+        cache_path: Option<&Path>,
+        force_rescan: bool,
+    ) -> Result<CharacterLibrary, DomainError> {
+        let start_time = std::time::Instant::now();
+        let mut cache = if let Some(cp) = cache_path {
+            if force_rescan {
+                LibraryScanCache::new()
+            } else {
+                LibraryScanCache::load_from_file(cp)
+            }
+        } else {
+            LibraryScanCache::new()
+        };
+
+        // 1. Discover candidate files safely
+        let raw_discovered = self.scan_inputs(paths)?;
+        let mut scanned_files = Vec::new();
+        let mut cache_hits = 0;
+        let mut cache_misses = 0;
+        let mut unclassified_files = Vec::new();
+
+        for file in raw_discovered {
+            let mtime = LibraryScanCache::get_mtime_secs(&file.path);
+            if !force_rescan {
+                if let Some(cached_entry) = cache.lookup(&file.path, file.size_bytes, mtime) {
+                    scanned_files.push(ScannedFile::from(cached_entry));
+                    cache_hits += 1;
+                    continue;
+                }
+            }
+
+            // Cache miss: needs classification
+            cache_misses += 1;
+            unclassified_files.push((file, mtime));
+        }
+
+        // 2. Classify unclassified candidates
+        if !unclassified_files.is_empty() {
+            let mut to_classify: Vec<ScannedFile> =
+                unclassified_files.iter().map(|(f, _)| f.clone()).collect();
+            self.classify_candidates(&mut to_classify)?;
+
+            for (idx, classified) in to_classify.into_iter().enumerate() {
+                let mtime = unclassified_files[idx].1;
+                cache.insert(crate::domain::library::cache::CachedFileEntry {
+                    path: classified.path.clone(),
+                    relative_path: classified.relative_path.clone(),
+                    file_name: classified.file_name.clone(),
+                    size_bytes: classified.size_bytes,
+                    modified_unix_secs: mtime,
+                    sha256: classified.sha256.clone(),
+                    classification: classified.classification.clone(),
+                });
+                scanned_files.push(classified);
+            }
+        }
+
+        // 3. Save cache if path provided
+        if let Some(cp) = cache_path {
+            let _ = cache.save_to_file(cp);
+        }
+
+        // 4. Match pairs
+        let (pairs, _hashes) = self.match_pairs(&scanned_files)?;
+
+        // 5. Build CharacterLibrary
+        let duration_ms = start_time.elapsed().as_millis() as u64;
+        let model_resources_found = scanned_files
+            .iter()
+            .filter(|f| {
+                matches!(
+                    f.classification,
+                    FileClassification::ModelResourceJson | FileClassification::RawMoc
+                )
+            })
+            .count();
+        let textures_found = scanned_files
+            .iter()
+            .filter(|f| matches!(f.classification, FileClassification::TextureImage))
+            .count();
+        let matched_outfits = pairs
+            .iter()
+            .filter(|p| {
+                p.match_confidence != MatchConfidence::Ambiguous
+                    && p.match_confidence != MatchConfidence::NoMatch
+            })
+            .count();
+        let ambiguous_outfits = pairs
+            .iter()
+            .filter(|p| p.match_confidence == MatchConfidence::Ambiguous)
+            .count();
+
+        let report = LibraryScanReport {
+            scanned_files: scanned_files.len(),
+            model_resources_found,
+            textures_found,
+            matched_outfits,
+            ambiguous_outfits,
+            scan_duration_ms: duration_ms,
+            cache_hit_count: cache_hits,
+            cache_miss_count: cache_misses,
+        };
+
+        Ok(CharacterLibrary::from_matched_pairs(
+            pairs,
+            paths.to_vec(),
+            report,
+        ))
     }
 }

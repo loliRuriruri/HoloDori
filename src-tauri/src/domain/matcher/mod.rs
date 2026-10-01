@@ -37,10 +37,12 @@ impl TextureMatcher {
                 .to_lowercase();
 
             // 1. Character ID match
+            let mut char_matched = false;
             if !identity.character_id.is_empty()
                 && tex_name.contains(&identity.character_id.to_lowercase())
             {
                 score += 40;
+                char_matched = true;
                 evidence.push(format!(
                     "Texture name contains character ID '{}'",
                     identity.character_id
@@ -48,8 +50,16 @@ impl TextureMatcher {
             }
 
             // 2. Outfit ID match
+            // To prevent false substring matches (e.g. char ID "00010" containing "001"),
+            // inspect the texture name outside of the character ID occurrence.
+            let name_for_outfit = if char_matched {
+                tex_name.replacen(&identity.character_id.to_lowercase(), "", 1)
+            } else {
+                tex_name.clone()
+            };
+
             if !identity.outfit_id.is_empty()
-                && tex_name.contains(&identity.outfit_id.to_lowercase())
+                && name_for_outfit.contains(&identity.outfit_id.to_lowercase())
             {
                 score += 30;
                 evidence.push(format!(

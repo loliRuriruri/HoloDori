@@ -174,3 +174,98 @@ pub struct BatchBuildReport {
     pub reports: Vec<ModelBuildReport>,
     pub overall_status: BuildStatus,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum LibraryFilter {
+    #[default]
+    All,
+    Buildable,
+    Built,
+    Warnings,
+    Ambiguous,
+    Failed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum StyleFilter {
+    #[default]
+    All,
+    Nrml,
+    Uniq,
+    Cmmn,
+    Unknown,
+    Custom(String),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssetSet {
+    pub model_path: PathBuf,
+    pub model_type: ModelSourceType,
+    pub texture_paths: Vec<PathBuf>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OutfitEntry {
+    pub id: String,
+    pub character_id: String,
+    pub outfit_id: String,
+    pub style_token: Option<String>,
+    pub model_source: PathBuf,
+    pub model_type: ModelSourceType,
+    pub textures: Vec<PathBuf>,
+    pub match_status: MatchConfidence,
+    pub validation_status: Option<BuildStatus>,
+    pub build_status: Option<BuildStatus>,
+    pub thumbnail_source: Option<PathBuf>,
+    pub evidence: Vec<String>,
+    pub warnings: Vec<String>,
+    pub matched_pair: MatchedPair,
+}
+
+impl OutfitEntry {
+    pub fn is_buildable(&self) -> bool {
+        self.match_status != MatchConfidence::Ambiguous
+            && self.match_status != MatchConfidence::NoMatch
+            && !self.textures.is_empty()
+            && self.model_source.exists()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CharacterEntry {
+    pub character_id: String,
+    pub display_name: Option<String>,
+    pub outfits: Vec<OutfitEntry>,
+    pub warnings: Vec<String>,
+    pub buildable_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct LibraryScanReport {
+    pub scanned_files: usize,
+    pub model_resources_found: usize,
+    pub textures_found: usize,
+    pub matched_outfits: usize,
+    pub ambiguous_outfits: usize,
+    pub scan_duration_ms: u64,
+    pub cache_hit_count: usize,
+    pub cache_miss_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CharacterLibrary {
+    pub root_paths: Vec<PathBuf>,
+    pub characters: Vec<CharacterEntry>,
+    pub total_models: usize,
+    pub buildable_models: usize,
+    pub scan_report: LibraryScanReport,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchProgress {
+    pub current_index: usize,
+    pub total_models: usize,
+    pub current_model_id: String,
+    pub stage: String,
+    pub status: String,
+}

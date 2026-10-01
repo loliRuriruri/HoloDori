@@ -102,3 +102,30 @@ HDM.AGENT.1R2 successfully proves the pipeline against real local HoloDori Live2
 | **AG1R2-10**| Synthetic Regressions | Tests 26–29 added | Discovered real-world conditions (HoloDori naming, outfit 002/003 styles, space paths, Korean Unicode paths) tested synthetically. | **PASS** |
 | **AG1R2-11**| Scope Discipline | Architectural audit | Zero Phase 2/3 features added; pure acceptance and hardening. | **PASS** |
 
+---
+
+## Acceptance Gate: HDM.AGENT.2 — Character Library & Batch Manager
+
+HDM.AGENT.2 elevates HoloDori Live2D Manager into a desktop character library and batch conversion manager.
+
+### Mandatory Acceptance Gates (HDM.AGENT.2)
+
+| Gate ID | Requirement | Verification Method | Pass Criteria | Status |
+|---|---|---|---|---|
+| **AG2-1** | Zero Regression | `cargo test --workspace` | All 28 existing unit and integration tests remain 100% green. | **PASS** (28/28 pass) |
+| **AG2-2** | Character Grouping | Domain BTreeMap grouping | Assets grouped deterministically by 5-digit Character ID. | **PASS** (`test_character_grouping`) |
+| **AG2-3** | Outfit Ordering | Sub-entity ordering | Outfits sorted strictly ascending by Outfit ID within character. | **PASS** (`test_outfit_ordering`) |
+| **AG2-4** | Unknown Outfit Discovery | Parser & Library retainment | Unknown/future outfit numbers (e.g. `005`) are retained, not discarded. | **PASS** (`test_unknown_outfit`) |
+| **AG2-5** | Search Functionality | Character, outfit, and style queries | Instant search matches across character ID, outfit ID, and style tokens. | **PASS** (domain filter + UI search) |
+| **AG2-6** | Multi-Criteria Filtering | Status and Style filters | Filters for Buildable, Built, Warnings, Ambiguous, Failed, and Style tags. | **PASS** (domain filter + UI filters) |
+| **AG2-7** | Multi-Select & Scoping | Selection management | Single outfit, character-wide select, and "Select All Valid" working. | **PASS** (UI selection state) |
+| **AG2-8** | Batch Build Engine | Batch conversion execution | Reuses core PackageBuilder for arbitrary $N$ selected models. | **PASS** (`test_batch_partial_failure`) |
+| **AG2-9** | Fault Isolation | Partial failure resilience | 1 model failure never aborts or corrupts unrelated models in batch. | **PASS** (`test_batch_partial_failure`) |
+| **AG2-10**| Progress & Cancellation | Atomic boundary cancellation | Emits actual progress events; clean cancellation between model boundaries. | **PASS** (`test_batch_cancellation`) |
+| **AG2-11**| Scan Metadata Cache | `LibraryScanCache` index | Warm rescans hit cache without re-reading files or hashing. | **PASS** (`test_cache_hit`, `test_cache_invalidation`) |
+| **AG2-12**| Scalability Benchmark | 500-model synthetic dataset | 500 models across 50 characters scanned and organized in < 1 second. | **PASS** (`test_500_model_synthetic_library`) |
+| **AG2-13**| Real Local Sample Smoke Test | `smoke_test_library` execution | 7 real models across 3 characters (`00007`, `00010`, `00012`) scanned & built. | **PASS** |
+| **AG2-14**| Source Immutability | Pre/post SHA-256 integrity | All source files in input directory remain bit-for-bit unmutated. | **PASS** |
+| **AG2-15**| Zero Copyrighted Assets | `git status` & `git ls-files` audit | Zero game assets or proprietary textures committed to repository. | **PASS** |
+
+
