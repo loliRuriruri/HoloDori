@@ -1,19 +1,23 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { ViewerRenderer } from './cubism/renderer';
-import { ViewportTransform } from './types';
+import { ViewportTransform, ViewerBackground } from './types';
 
 interface ViewerCanvasProps {
   renderer: ViewerRenderer | null;
+  background?: ViewerBackground;
   onCanvasReady: (canvas: HTMLCanvasElement) => void;
   onCanvasDestroy: () => void;
   onTransformChange?: (transform: ViewportTransform) => void;
+  onDoubleClick?: () => void;
 }
 
 export const ViewerCanvas: React.FC<ViewerCanvasProps> = ({
   renderer,
+  background = 'neutral',
   onCanvasReady,
   onCanvasDestroy,
   onTransformChange,
+  onDoubleClick,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -114,6 +118,33 @@ export const ViewerCanvas: React.FC<ViewerCanvasProps> = ({
     [renderer, onTransformChange]
   );
 
+  // Background styling
+  const getBackgroundStyle = (): React.CSSProperties => {
+    switch (background) {
+      case 'checkerboard':
+        return {
+          backgroundColor: '#181a1f',
+          backgroundImage:
+            'linear-gradient(45deg, #252830 25%, transparent 25%), linear-gradient(-45deg, #252830 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #252830 75%), linear-gradient(-45deg, transparent 75%, #252830 75%)',
+          backgroundSize: '24px 24px',
+          backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0px',
+        };
+      case 'transparent':
+        return {
+          backgroundColor: 'transparent',
+        };
+      case 'neutral':
+      default:
+        return {
+          backgroundColor: '#16181d',
+          backgroundImage:
+            'radial-gradient(#252830 1px, transparent 1px), radial-gradient(#252830 1px, #16181d 1px)',
+          backgroundSize: '32px 32px',
+          backgroundPosition: '0 0, 16px 16px',
+        };
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -123,11 +154,7 @@ export const ViewerCanvas: React.FC<ViewerCanvasProps> = ({
         position: 'relative',
         overflow: 'hidden',
         userSelect: 'none',
-        backgroundColor: '#181a1f',
-        backgroundImage:
-          'radial-gradient(#282c34 1px, transparent 1px), radial-gradient(#282c34 1px, #181a1f 1px)',
-        backgroundSize: '40px 40px',
-        backgroundPosition: '0 0, 20px 20px',
+        ...getBackgroundStyle(),
       }}
     >
       <canvas
@@ -137,6 +164,7 @@ export const ViewerCanvas: React.FC<ViewerCanvasProps> = ({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onWheel={handleWheel}
+        onDoubleClick={onDoubleClick}
         style={{
           width: '100%',
           height: '100%',

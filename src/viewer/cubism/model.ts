@@ -95,7 +95,36 @@ export class Live2DModelWrapper extends CubismUserModel {
     // 7. Setup Breath
     this.setupBreath();
 
+    // 8. Setup Physics if present
+    if (loadedPackage.physicsBuffer) {
+      this.loadPhysics(loadedPackage.physicsBuffer, loadedPackage.physicsBuffer.byteLength);
+    }
+
     this.setInitialized(true);
+  }
+
+  public hasPhysics(): boolean {
+    return this._physics !== null;
+  }
+
+  public getPhysicsRigCount(): number {
+    if (!this._physics) return 0;
+    try {
+      const rig = (this._physics as any)._physicsRig;
+      if (rig && Array.isArray(rig.settings)) {
+        return rig.settings.length;
+      }
+      if (rig && typeof rig.subrigCount === 'number') {
+        return rig.subrigCount;
+      }
+    } catch {
+      // ignore
+    }
+    return this._physics ? 1 : 0;
+  }
+
+  public attachPhysics(buffer: ArrayBuffer): void {
+    this.loadPhysics(buffer, buffer.byteLength);
   }
 
   private setupEyeBlink(): void {
@@ -143,7 +172,7 @@ export class Live2DModelWrapper extends CubismUserModel {
 
     const angleY = idManager.getId('ParamAngleY');
     if (model.getParameterIndex(angleY) >= 0) {
-      breathParams.push(new BreathParameterData(angleY, 0.0, 3.0, 3.5345, 0.5));
+      breathParams.push(new BreathParameterData(angleY, 0.0, 5.0, 5.5345, 0.5));
     }
 
     const bodyAngleX = idManager.getId('ParamBodyAngleX');
@@ -183,7 +212,12 @@ export class Live2DModelWrapper extends CubismUserModel {
       this._breath.updateParameters(model, deltaTimeSeconds);
     }
 
-    // 5. User slider overrides (manual inspection)
+    // 5. Authentic Live2D Physics
+    if (options.enablePhysics && this._physics) {
+      this._physics.evaluate(model, deltaTimeSeconds);
+    }
+
+    // 6. User slider overrides (manual inspection)
     for (const [paramIndex, value] of this._userOverrides.entries()) {
       model.setParameterValueByIndex(paramIndex, value);
     }

@@ -49,6 +49,12 @@ impl Model3Manifest {
         })
     }
 
+    pub fn with_physics(mut self, physics_relative_path: &str) -> Result<Self, DomainError> {
+        Self::validate_relative_path(physics_relative_path)?;
+        self.file_references.physics = Some(physics_relative_path.to_string());
+        Ok(self)
+    }
+
     pub fn to_json_pretty(&self) -> Result<String, DomainError> {
         serde_json::to_string_pretty(self).map_err(|e| DomainError::ManifestInvalid {
             code: ErrorCode::ErrManifestInvalid,

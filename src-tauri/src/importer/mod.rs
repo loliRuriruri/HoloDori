@@ -176,6 +176,30 @@ impl ImporterCoordinator {
         UnityExtractor::extract_motion(&bundle_path, asset_name)
     }
 
+    /// Acquires model bundle (cache or CDN) and extracts .physics3.json bytes if available.
+    pub async fn acquire_and_extract_physics(
+        &self,
+        object_name: &str,
+        asset_name: &str,
+        md5: &str,
+        expected_size: Option<u64>,
+    ) -> Result<Option<Vec<u8>>, DomainError> {
+        let cancel_clone = self.cancel_token.clone();
+        let bundle_path = self
+            .acquisition
+            .acquire_bundle(
+                object_name,
+                md5,
+                expected_size,
+                &self.cache_manager,
+                cancel_clone,
+                |_rec, _tot| {},
+            )
+            .await?;
+
+        Ok(UnityExtractor::extract_physics(&bundle_path, asset_name))
+    }
+
     /// Imports selected models from the catalog into the destination directory.
     pub async fn import_models<F>(
         &self,
@@ -391,12 +415,36 @@ impl ImporterCoordinator {
                     })
                     .collect();
 
+                let mut physics_file = None;
+                if let Some(phys_bytes) = &extracted.physics3_bytes {
+                    let phys_filename = format!("{}.physics3.json", extracted.model_name);
+                    let phys_full = out_dir.join(&phys_filename);
+                    if fs::write(&phys_full, phys_bytes).is_ok() {
+                        if let Ok(manifest_content) = fs::read_to_string(&manifest_full) {
+                            if let Ok(manifest) =
+                                crate::domain::manifest::Model3Manifest::from_json_str(
+                                    &manifest_content,
+                                )
+                            {
+                                if let Ok(updated_manifest) = manifest.with_physics(&phys_filename)
+                                {
+                                    if let Ok(json_str) = updated_manifest.to_json_pretty() {
+                                        let _ = fs::write(&manifest_full, json_str);
+                                    }
+                                }
+                            }
+                        }
+                        physics_file = Some(phys_filename);
+                    }
+                }
+
                 Ok(ImportedModelSummary {
                     asset_name: entry.asset_name.clone(),
                     character_id: extracted.character_id.clone(),
                     outfit_id: extracted.outfit_id.clone(),
                     moc3_file: moc3_full.to_string_lossy().to_string(),
                     textures: package_textures,
+                    physics_file,
                     manifest_file: manifest_full.to_string_lossy().to_string(),
                     output_dir: out_dir.to_string_lossy().to_string(),
                 })

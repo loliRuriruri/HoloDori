@@ -1,5 +1,9 @@
 export type ViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
 
+export type ViewerMode = 'player' | 'advanced';
+
+export type ViewerBackground = 'neutral' | 'checkerboard' | 'transparent';
+
 export type ParameterCategory =
   | 'Angle'
   | 'Eye'
@@ -28,6 +32,7 @@ export interface ViewportTransform {
 export interface ViewerOptions {
   enableBreath: boolean;
   enableEyeBlink: boolean;
+  enablePhysics: boolean;
 }
 
 export interface ModelPackageTarget {
@@ -76,4 +81,47 @@ export interface MotionPlayInfo {
 export interface ExpressionPlayInfo {
   assetName: string;
   name: string;
+}
+
+export interface ViewerSettings {
+  mode: ViewerMode;
+  background: ViewerBackground;
+  enableBlink: boolean;
+  enableBreath: boolean;
+  enablePhysics: boolean;
+  autoMotion: boolean;
+  autoMotionDelaySec: number;
+  zoom: number;
+  lastCharacterId?: string;
+  lastOutfitId?: string;
+}
+
+export interface PlayerFavorites {
+  characters: string[];
+  outfits: string[];
+  motions: string[];
+  expressions: string[];
+}
+
+export interface RecentModel {
+  modelId: string;
+  characterId: string;
+  outfitId: string;
+  displayName: string;
+  packageDir: string;
+  timestamp: number;
+}
+
+export interface ModelDiagnostics {
+  fps: number;
+  modelId: string;
+  mocVersion: string;
+  paramCount: number;
+  playingMotion: string | null;
+  activeExpression: string | null;
+  physicsLoaded: boolean;
+  physicsSettingsCount: number;
+  webglVendor: string;
+  webglRenderer: string;
+  coreVersion: string;
 }

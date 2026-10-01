@@ -93,6 +93,8 @@ pub struct ImportedModelSummary {
     pub outfit_id: String,
     pub moc3_file: String,
     pub textures: Vec<String>,
+    #[serde(default)]
+    pub physics_file: Option<String>,
     pub manifest_file: String,
     pub output_dir: String,
 }
@@ -120,6 +122,7 @@ pub struct ExtractedLive2DAsset {
     pub outfit_id: String,
     pub moc3_bytes: Vec<u8>,
     pub textures: Vec<ExtractedTexture>,
+    pub physics3_bytes: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone)]

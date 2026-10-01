@@ -143,16 +143,16 @@ fn extract_expression_info(raw_bytes: &[u8], asset_name: &str) -> ExpressionInfo
             // Locate "Live2D Expression" string
             for offset in 0..data.len() - 20 {
                 let len = u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
-                if len == 17 && offset + 4 + len <= data.len() {
-                    if &data[offset + 4..offset + 4 + len] == b"Live2D Expression" {
-                        let cur = offset + 4 + 20; // 17 aligned to 4 = 20
-                        fade_in = f32::from_le_bytes(data[cur..cur + 4].try_into().unwrap());
-                        fade_out = f32::from_le_bytes(data[cur + 4..cur + 8].try_into().unwrap());
-                        params_count =
-                            u32::from_le_bytes(data[cur + 8..cur + 12].try_into().unwrap())
-                                as usize;
-                        break;
-                    }
+                if len == 17
+                    && offset + 4 + len <= data.len()
+                    && &data[offset + 4..offset + 4 + len] == b"Live2D Expression"
+                {
+                    let cur = offset + 4 + 20; // 17 aligned to 4 = 20
+                    fade_in = f32::from_le_bytes(data[cur..cur + 4].try_into().unwrap());
+                    fade_out = f32::from_le_bytes(data[cur + 4..cur + 8].try_into().unwrap());
+                    params_count =
+                        u32::from_le_bytes(data[cur + 8..cur + 12].try_into().unwrap()) as usize;
+                    break;
                 }
             }
         }
@@ -217,7 +217,7 @@ fn extract_motion_info(raw_bytes: &[u8], asset_name: &str) -> MotionInfo {
             for offset in 0..data.len() - 4 {
                 let count =
                     u32::from_le_bytes(data[offset..offset + 4].try_into().unwrap()) as usize;
-                if count >= 20 && count <= 50 {
+                if (20..=50).contains(&count) {
                     let next_len =
                         u32::from_le_bytes(data[offset + 4..offset + 8].try_into().unwrap());
                     if next_len == 11 {
@@ -257,10 +257,8 @@ fn extract_motion_info(raw_bytes: &[u8], asset_name: &str) -> MotionInfo {
             for cur in (0..data.len() - 8).step_by(4) {
                 let time = f32::from_le_bytes(data[cur..cur + 4].try_into().unwrap());
                 let num = u32::from_le_bytes(data[cur + 4..cur + 8].try_into().unwrap()) as usize;
-                if time >= 0.0 && time <= 60.0 && num > 0 && num <= 40 {
-                    if time > duration {
-                        duration = time;
-                    }
+                if (0.0..=60.0).contains(&time) && num > 0 && num <= 40 && time > duration {
+                    duration = time;
                 }
             }
         }

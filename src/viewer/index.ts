@@ -9,3 +9,4 @@ export * from './cubism/renderer';
 export * from './cubism/parameters';
 export * from './cubism/motion';
 export * from './cubism/expression';
+export * from './settings';

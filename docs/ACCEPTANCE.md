@@ -188,6 +188,43 @@ HDM.AGENT.4A implements an embedded real-time WebGL Live2D viewer inside the Hol
 | **AG4A-9** | 20-Cycle Repeated Load/Unload Stress Test | Automated alternating loop | 20 sequential cycles alternating between `00007_001` and `00010_001` with complete texture/buffer disposal and zero leaks. | **PASS** (20/20 cycles complete) |
 | **AG4A-10**| Clean Repository & Zero Game Assets | Git audit (`git status`, `git ls-files`) | Zero game assets, zero `.moc3`/`.png` samples, and zero proprietary Core binaries committed to git. | **PASS** (Strict `.gitignore` enforcement) |
 
+---
+
+## Acceptance Gate: HDM.AGENT.4B — HoloDori Motion & Expression Integration
+
+HDM.AGENT.4B integrates authentic HoloDori motions and expressions into the embedded Live2D viewer.
+
+### Mandatory Acceptance Gates (HDM.AGENT.4B)
+
+| Gate ID | Requirement | Verification Method | Pass Criteria | Status |
+|---|---|---|---|---|
+| **AG4B-1** | Baseline Preservation | `cargo test --workspace` & `npm test` | All 76 Rust tests pass, unit and browser runtime tests pass. | **PASS** (76 Rust / 7 JS unit / 6 runtime) |
+| **AG4B-2** | Motion & Expression Catalog Discovery | `ImporterCoordinator` & `CatalogLoader` | Discovers all 202 universal motions and character-scoped expressions directly from octocache metadata. | **PASS** (`get_model_animations` IPC) |
+| **AG4B-3** | Binary Animation Extraction | `UnityExtractor` | Converts `AnimationClip` (StreamedClip) and `CubismExpressionData` MonoBehaviours into standard Cubism 3/4 `.motion3.json` and `.exp3.json`. | **PASS** (`test_extract_real_expression_and_motion_if_cached`) |
+| **AG4B-4** | Real Motion Playback | Headless Edge browser test | Real HoloDori motion reproduces duration, curve interpolation, and parameter mutation over time. | **PASS** (`scripts/test_viewer_runtime.mjs` Test Case 4) |
+| **AG4B-5** | Real Expression Application | Headless Edge browser test | Real expressions apply additive/overwrite morphs and restore clean neutral baseline upon clear. | **PASS** (`scripts/test_viewer_runtime.mjs` Test Case 5) |
+| **AG4B-6** | Concurrent Layering | Headless Edge browser test | Motion + Expression + Procedural Idle run concurrently with clean layer precedence. | **PASS** (`scripts/test_viewer_runtime.mjs` Test Case 6) |
+
+---
+
+## Acceptance Gate: HDM.AGENT.4C — Character Player, Physics & Viewer Productization
+
+HDM.AGENT.4C productizes the viewer into a practical Character Player, integrates authentic Live2D physics from HoloDori bundles, enables continuous in-viewer switching, auto-motion, favorites, and settings persistence.
+
+### Mandatory Acceptance Gates (HDM.AGENT.4C)
+
+| Gate ID | Requirement | Verification Method | Pass Criteria | Status |
+|---|---|---|---|---|
+| **AG4C-1** | Baseline & Zero Regression | `cargo test --workspace`, `npm test`, `npm run build` | All 76 Rust tests pass, all 11 frontend unit tests pass, all 9 browser runtime tests pass, 0 TS build errors. | **PASS** (76 Rust / 11 JS unit / 9 runtime) |
+| **AG4C-2** | Authentic Physics Audit & Extraction | `UnityExtractor::parse_physics_rig` | Audit verdict: **VERIFIED**. `live2d_mdl_*` bundles contain `CubismPhysicsController` MonoBehaviour; parsed and written as `<model>.physics3.json` into package. | **PASS** (`test_extract_real_physics_if_cached`, 72 subrigs verified) |
+| **AG4C-3** | Evaluation Precedence Hierarchy | Live2DModelWrapper pipeline | Base -> Motion -> Expression -> EyeBlink -> Breath -> Physics -> UserOverrides -> model.update. Secondary hair/clothing physics reacts dynamically to head/body motion. | **PASS** (`tests/viewer_unit.test.mjs`, runtime Test Case 8) |
+| **AG4C-4** | In-Viewer Character & Outfit Switching | Headless Edge browser test | Characters and outfits switch directly within the player on the same WebGL canvas and renderer without context loss or memory leaks. | **PASS** (`scripts/test_viewer_runtime.mjs` Test Case 7) |
+| **AG4C-5** | Auto-Motion & Non-Repeating Random Motion | Playback controller | Auto-motion timer schedules random motion upon idle; repeat prevention algorithm avoids back-to-back duplicate motions when candidates > 1. | **PASS** (`tests/viewer_unit.test.mjs`, `ViewerPage.tsx`) |
+| **AG4C-6** | Persistent Settings & Favorites | Tauri IPC & localStorage | Settings (mode, background, toggles, delay), favorites (characters, outfits, motions, expressions), and recent models (capped at 10) persisted. | **PASS** (`tests/viewer_unit.test.mjs`, runtime Test Case 9) |
+| **AG4C-7** | Dual Mode Character Player UI | `ViewerControls.tsx` | Clean default Player mode (character, outfit, motion, expression, timeline, auto-motion, fit, fullscreen) with technical sliders organized under Advanced tab. | **PASS** (UI layout verified, 0 TypeScript errors) |
+| **AG4C-8** | Git & Boundary Safety | Repository audit | Zero proprietary Cubism Core binaries, game bundles, or sample models committed to git. | **PASS** (Strict `.gitignore` enforcement) |
+
+
 
 
 

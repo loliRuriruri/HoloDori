@@ -358,6 +358,51 @@ pub async fn get_motion_bytes(
         .map_err(|e| e.to_string())
 }
 
+#[command]
+pub async fn get_physics_bytes(
+    state: tauri::State<'_, ImporterState>,
+    object_name: String,
+    asset_name: String,
+    md5: String,
+    expected_size: Option<u64>,
+) -> Result<Option<Vec<u8>>, String> {
+    state
+        .coordinator
+        .acquire_and_extract_physics(&object_name, &asset_name, &md5, expected_size)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[command]
+pub async fn load_player_settings() -> Result<serde_json::Value, String> {
+    let path = get_settings_path();
+    if path.exists() {
+        let content = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        let val: serde_json::Value = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+        Ok(val)
+    } else {
+        Ok(serde_json::json!({}))
+    }
+}
+
+#[command]
+pub async fn save_player_settings(settings: serde_json::Value) -> Result<(), String> {
+    let path = get_settings_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let content = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
+    std::fs::write(&path, content).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn get_settings_path() -> PathBuf {
+    std::env::current_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join(".hdm_cache")
+        .join("player_settings.json")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

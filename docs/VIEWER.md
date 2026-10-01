@@ -27,18 +27,24 @@ The viewer subsystem resides in `src/viewer/`:
 ```
 src/viewer/
 ├── index.ts                     # Public API and component exports
-├── types.ts                     # Viewport, parameter, and package types
+├── types.ts                     # Viewport, parameter, diagnostics, and package types
+├── settings.ts                  # Persistent settings, favorites, and recent models
 ├── ViewerPage.tsx               # Orchestrator container with loading/error boundaries
 ├── ViewerCanvas.tsx             # Interactive WebGL canvas with ResizeObserver & input handling
-├── ViewerControls.tsx           # Header bar, camera buttons, idle toggles, & parameter inspector
+├── ViewerControls.tsx           # Player/Advanced modes, camera, switching, timeline, diagnostics
 └── cubism/
     ├── runtime.ts               # CubismFramework singleton lifecycle & Core detection
     ├── resources.ts             # Memory-safe package loading via Tauri IPC
     ├── parameters.ts            # Parameter categorization, formatting, and reset logic
-    ├── model.ts                 # Live2DModelWrapper extending CubismUserModel
-    ├── renderer.ts              # WebGL context, animation loop, and camera matrix math
+    ├── model.ts                 # Live2DModelWrapper extending CubismUserModel with physics
+    ├── motion.ts                # HoloDori motion manager with progress tracking
+    ├── expression.ts            # HoloDori expression manager
+    ├── renderer.ts              # WebGL context, animation loop, FPS counter, and camera matrix math
     └── framework/               # Live2D Cubism 5 Web Framework modules (Open Software License)
 ```
+
+See [CHARACTER_PLAYER.md](file:///D:/test/holodori/docs/CHARACTER_PLAYER.md) for detailed documentation on Player Mode, authentic Live2D physics extraction, in-viewer character switching, and automation features.
+
 
 ---
 
@@ -99,8 +105,14 @@ src/viewer/
 
 ## 5. Verification & Acceptance Results
 
-- **Unit Tests**: Parameter categorization, name formatting, aspect scaling, and zoom clamping verified (`tests/viewer_unit.test.mjs` - 4 PASS).
-- **Headless Browser Acceptance**: Automated Edge browser tests (`scripts/test_viewer_runtime.mjs`):
+- **Unit Tests**: Parameter categorization, name formatting, aspect scaling, zoom clamping, settings persistence, favorites toggling, recent list capping, and random motion non-repeats verified (`tests/viewer_unit.test.mjs` - 11 PASS).
+- **Headless Browser Acceptance**: Automated Edge browser tests (`scripts/test_viewer_runtime.mjs` - 9 PASS):
   - Model `00007_001`: 131 parameters verified, live slider adjustment PASS.
   - Model `00010_001`: 162 parameters verified, PASS.
   - 20-cycle stress test: 20 sequential load/unload cycles completed without error or memory leaks.
+  - Real HoloDori motion playback and parameter mutation PASS.
+  - Real HoloDori expression application and neutral reset PASS.
+  - Concurrent motion + expression + procedural idle PASS.
+  - In-viewer character and outfit switching on same WebGL context without context loss PASS.
+  - Authentic Live2D physics attachment and 72-subrig evaluation PASS.
+  - Player settings, favorites, and recent models persistence PASS.

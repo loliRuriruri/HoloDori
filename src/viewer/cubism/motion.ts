@@ -72,6 +72,8 @@ export class HoloDoriMotionManager {
       motion.setEffectIds([], []);
 
       const duration = motion.getDuration();
+      this._elapsedTime = 0;
+      this._duration = duration;
       const info: MotionPlayInfo = { assetName, name, duration };
 
       // Priority 2 (normal priority)
@@ -94,6 +96,37 @@ export class HoloDoriMotionManager {
     this._manager.stopAllMotions();
     this._currentMotion = null;
     this._setState('idle', null);
+  }
+
+  private _elapsedTime = 0;
+  private _duration = 0;
+  private _onProgress?: (elapsed: number, duration: number, progress: number) => void;
+
+  public setProgressCallback(cb: (elapsed: number, duration: number, progress: number) => void): void {
+    this._onProgress = cb;
+  }
+
+  public getElapsedTime(): number {
+    return this._elapsedTime;
+  }
+
+  public getDuration(): number {
+    return this._duration;
+  }
+
+  public getProgress(): number {
+    if (this._duration <= 0) return 0;
+    return Math.min(1.0, this._elapsedTime / this._duration);
+  }
+
+  public updateMotion(model: any, deltaTimeSeconds: number): boolean {
+    if (this._state === 'playing') {
+      this._elapsedTime += deltaTimeSeconds;
+      if (this._onProgress) {
+        this._onProgress(this._elapsedTime, this._duration, this.getProgress());
+      }
+    }
+    return this._manager.updateMotion(model, deltaTimeSeconds);
   }
 
   public isFinished(): boolean {

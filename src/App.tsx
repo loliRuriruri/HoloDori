@@ -954,6 +954,9 @@ export const App: React.FC = () => {
       <ViewerPage
         target={viewerTarget}
         onBack={() => setViewerTarget(null)}
+        library={library}
+        outputDir={outputDir}
+        onSwitchModel={(newTarget) => setViewerTarget(newTarget)}
       />
     )}
   </div>

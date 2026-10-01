@@ -21,6 +21,7 @@ export interface LoadedModelPackage {
   mocBuffer: ArrayBuffer;
   textureImages: HTMLImageElement[];
   textureUrls: string[];
+  physicsBuffer?: ArrayBuffer;
   dispose: () => void;
 }
 
@@ -102,6 +103,20 @@ export async function loadModelPackageFromDisk(
     throw err;
   }
 
+  // 4. Optional: Read physics binary data if referenced
+  let physicsBuffer: ArrayBuffer | undefined;
+  if (model3Json.FileReferences && model3Json.FileReferences.Physics) {
+    try {
+      const physBytes = await readPackageBytes(packageDir, model3Json.FileReferences.Physics);
+      physicsBuffer = (physBytes.buffer as ArrayBuffer).slice(
+        physBytes.byteOffset,
+        physBytes.byteOffset + physBytes.byteLength
+      ) as ArrayBuffer;
+    } catch {
+      // Physics file missing or unreadable - non-fatal
+    }
+  }
+
   const dispose = () => {
     for (const url of createdUrls) {
       URL.revokeObjectURL(url);
@@ -114,6 +129,7 @@ export async function loadModelPackageFromDisk(
     mocBuffer,
     textureImages,
     textureUrls: createdUrls,
+    physicsBuffer,
     dispose,
   };
 }

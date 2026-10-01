@@ -26,7 +26,10 @@ pub fn run() {
             commands::read_package_file,
             commands::get_model_animations,
             commands::get_expression_bytes,
-            commands::get_motion_bytes
+            commands::get_motion_bytes,
+            commands::get_physics_bytes,
+            commands::load_player_settings,
+            commands::save_player_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

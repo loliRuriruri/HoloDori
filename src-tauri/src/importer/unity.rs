@@ -186,6 +186,7 @@ impl UnityExtractor {
 
         let mut found_moc: Option<(String, Vec<u8>)> = None;
         let mut found_textures = Vec::new();
+        let mut found_physics: Option<Vec<u8>> = None;
 
         for file_idx in 0..collection.serialized_files().len() {
             let loaded_file = &collection.serialized_files()[file_idx];
@@ -206,6 +207,19 @@ impl UnityExtractor {
                                 moc_bytes.len()
                             );
                             found_moc = Some((moc.name.clone(), moc_bytes));
+                        }
+                    } else if found_physics.is_none() {
+                        if let Ok(obj_data) =
+                            loaded_file.file.read_object_bytes(obj_idx, 2 * 1024 * 1024)
+                        {
+                            if let Some(phys) = Self::parse_physics_rig(&obj_data) {
+                                info!(
+                                    "Extracted authentic Cubism physics for {}: {} bytes",
+                                    asset_name,
+                                    phys.len()
+                                );
+                                found_physics = Some(phys);
+                            }
                         }
                     }
                 }
@@ -282,6 +296,7 @@ impl UnityExtractor {
             outfit_id,
             moc3_bytes,
             textures: found_textures,
+            physics3_bytes: found_physics,
         })
     }
 
@@ -830,6 +845,287 @@ impl UnityExtractor {
 
         serde_json::to_vec_pretty(&motion_json).ok()
     }
+
+    /// Extracts Live2D Cubism physics definition (.physics3.json) from a model bundle if present.
+    pub fn extract_physics(bundle_path: &Path, asset_name: &str) -> Option<Vec<u8>> {
+        let raw_bundle = fs::read(bundle_path).ok()?;
+        let mut unmasked = raw_bundle;
+        deobfuscate_bundle_header(&mut unmasked, asset_name);
+
+        let temp_dir = tempfile::tempdir().ok()?;
+        let temp_bundle_path = temp_dir.path().join("bundle.unity3d");
+        fs::write(&temp_bundle_path, &unmasked).ok()?;
+
+        let region = Region::from_file(&temp_bundle_path).ok()?;
+        let bundle = UnityFsBundle::open_with_options(
+            &region,
+            BundleOpenOptions {
+                limits: BundleParseLimits::default(),
+                oodle_decoder: None,
+                unity_cn_key: None,
+            },
+        )
+        .ok()?;
+
+        let mut block_cache = BlockDecodeCache::new();
+        for index in 0..bundle.entries.len() {
+            let raw_entry_bytes = bundle.read_entry_with_cache(index, &mut block_cache).ok()?;
+            let unity_version: UnityVersion =
+                resolve_unity_version(None).parse().unwrap_or_default();
+            let file = SerializedFile::open_with_options(
+                Region::from_bytes(raw_entry_bytes.clone()),
+                SerializedOpenOptions {
+                    unity_version_override: Some(unity_version),
+                    bundle_version_hint: None,
+                    strict_unity_versions: false,
+                    ..SerializedOpenOptions::default()
+                },
+            )
+            .ok()?;
+
+            for (obj_idx, obj) in file.objects.iter().enumerate() {
+                if obj.class_id == 114 {
+                    if let Ok(obj_data) = file.read_object_bytes(obj_idx, 2 * 1024 * 1024) {
+                        if let Some(phys) = Self::parse_physics_rig(&obj_data) {
+                            return Some(phys);
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Parses CubismPhysicsController / Rig MonoBehaviour to extract Live2D .physics3.json
+    pub fn parse_physics_rig(obj_data: &[u8]) -> Option<Vec<u8>> {
+        if obj_data.len() < 64 {
+            return None;
+        }
+
+        // SubRig count is at offset 32 (after MonoBehaviour header & name)
+        let subrig_count = u32::from_le_bytes(obj_data.get(32..36)?.try_into().ok()?) as usize;
+        if !(1..=256).contains(&subrig_count) {
+            return None;
+        }
+
+        let mut cur = 36;
+        let mut physics_settings = Vec::with_capacity(subrig_count);
+        let mut physics_dict = Vec::with_capacity(subrig_count);
+        let mut total_inputs = 0;
+        let mut total_outputs = 0;
+        let mut total_vertices = 0;
+
+        for i in 0..subrig_count {
+            if cur + 4 > obj_data.len() {
+                return None;
+            }
+            let name_len =
+                u32::from_le_bytes(obj_data.get(cur..cur + 4)?.try_into().ok()?) as usize;
+            cur += 4;
+            if cur + name_len > obj_data.len() || name_len == 0 || name_len > 128 {
+                return None;
+            }
+            let name = std::str::from_utf8(obj_data.get(cur..cur + name_len)?)
+                .ok()?
+                .to_string();
+            cur += (name_len + 3) & !3;
+
+            let setting_id = format!("PhysicsSetting{}", i + 1);
+            physics_dict.push(serde_json::json!({
+                "Id": &setting_id,
+                "Name": &name
+            }));
+
+            // Inputs array
+            if cur + 4 > obj_data.len() {
+                return None;
+            }
+            let input_count =
+                u32::from_le_bytes(obj_data.get(cur..cur + 4)?.try_into().ok()?) as usize;
+            cur += 4;
+            if input_count > 64 {
+                return None;
+            }
+            let mut inputs = Vec::with_capacity(input_count);
+            for _ in 0..input_count {
+                if cur + 4 > obj_data.len() {
+                    return None;
+                }
+                let id_len =
+                    u32::from_le_bytes(obj_data.get(cur..cur + 4)?.try_into().ok()?) as usize;
+                cur += 4;
+                if cur + id_len > obj_data.len() || id_len == 0 || id_len > 64 {
+                    return None;
+                }
+                let src_id = std::str::from_utf8(obj_data.get(cur..cur + id_len)?)
+                    .ok()?
+                    .to_string();
+                cur += (id_len + 3) & !3;
+
+                if cur + 24 > obj_data.len() {
+                    return None;
+                }
+                let weight = f32::from_le_bytes(obj_data.get(cur + 12..cur + 16)?.try_into().ok()?);
+                let inp_type_int =
+                    i32::from_le_bytes(obj_data.get(cur + 16..cur + 20)?.try_into().ok()?);
+                let reflect = obj_data[cur + 20] != 0;
+                cur += 24;
+
+                let inp_type = match inp_type_int {
+                    1 => "Y",
+                    2 => "Angle",
+                    _ => "X",
+                };
+
+                inputs.push(serde_json::json!({
+                    "Source": {
+                        "Target": "Parameter",
+                        "Id": src_id
+                    },
+                    "Weight": weight,
+                    "Type": inp_type,
+                    "Reflect": reflect
+                }));
+            }
+            total_inputs += inputs.len();
+
+            // Outputs array
+            if cur + 4 > obj_data.len() {
+                return None;
+            }
+            let output_count =
+                u32::from_le_bytes(obj_data.get(cur..cur + 4)?.try_into().ok()?) as usize;
+            cur += 4;
+            if output_count > 64 {
+                return None;
+            }
+            let mut outputs = Vec::with_capacity(output_count);
+            for _ in 0..output_count {
+                if cur + 4 > obj_data.len() {
+                    return None;
+                }
+                let id_len =
+                    u32::from_le_bytes(obj_data.get(cur..cur + 4)?.try_into().ok()?) as usize;
+                cur += 4;
+                if cur + id_len > obj_data.len() || id_len == 0 || id_len > 64 {
+                    return None;
+                }
+                let dest_id = std::str::from_utf8(obj_data.get(cur..cur + id_len)?)
+                    .ok()?
+                    .to_string();
+                cur += (id_len + 3) & !3;
+
+                if cur + 28 > obj_data.len() {
+                    return None;
+                }
+                let v_idx = i32::from_le_bytes(obj_data.get(cur..cur + 4)?.try_into().ok()?);
+                let scale = f32::from_le_bytes(obj_data.get(cur + 12..cur + 16)?.try_into().ok()?);
+                let weight = f32::from_le_bytes(obj_data.get(cur + 16..cur + 20)?.try_into().ok()?);
+                let out_type_int =
+                    i32::from_le_bytes(obj_data.get(cur + 20..cur + 24)?.try_into().ok()?);
+                let reflect = obj_data[cur + 24] != 0;
+                cur += 28;
+
+                let out_type = match out_type_int {
+                    1 => "Y",
+                    2 => "Angle",
+                    _ => "X",
+                };
+
+                outputs.push(serde_json::json!({
+                    "Destination": {
+                        "Target": "Parameter",
+                        "Id": dest_id
+                    },
+                    "VertexIndex": v_idx,
+                    "Scale": scale,
+                    "Weight": weight,
+                    "Type": out_type,
+                    "Reflect": reflect
+                }));
+            }
+            total_outputs += outputs.len();
+
+            // Vertices array
+            if cur + 4 > obj_data.len() {
+                return None;
+            }
+            let particle_count =
+                u32::from_le_bytes(obj_data.get(cur..cur + 4)?.try_into().ok()?) as usize;
+            cur += 4;
+            if particle_count > 64 {
+                return None;
+            }
+            let mut vertices = Vec::with_capacity(particle_count);
+            for _ in 0..particle_count {
+                if cur + 24 > obj_data.len() {
+                    return None;
+                }
+                let px = f32::from_le_bytes(obj_data.get(cur..cur + 4)?.try_into().ok()?);
+                let py = f32::from_le_bytes(obj_data.get(cur + 4..cur + 8)?.try_into().ok()?);
+                let mobility =
+                    f32::from_le_bytes(obj_data.get(cur + 8..cur + 12)?.try_into().ok()?);
+                let delay = f32::from_le_bytes(obj_data.get(cur + 12..cur + 16)?.try_into().ok()?);
+                let accel = f32::from_le_bytes(obj_data.get(cur + 16..cur + 20)?.try_into().ok()?);
+                let radius = f32::from_le_bytes(obj_data.get(cur + 20..cur + 24)?.try_into().ok()?);
+                cur += 24;
+
+                vertices.push(serde_json::json!({
+                    "Position": { "X": px, "Y": py },
+                    "Mobility": mobility,
+                    "Delay": delay,
+                    "Acceleration": accel,
+                    "Radius": radius
+                }));
+            }
+            total_vertices += vertices.len();
+
+            // Normalization
+            if cur + 24 > obj_data.len() {
+                return None;
+            }
+            let pos_max = f32::from_le_bytes(obj_data.get(cur..cur + 4)?.try_into().ok()?);
+            let pos_min = f32::from_le_bytes(obj_data.get(cur + 4..cur + 8)?.try_into().ok()?);
+            let pos_def = f32::from_le_bytes(obj_data.get(cur + 8..cur + 12)?.try_into().ok()?);
+            let ang_max = f32::from_le_bytes(obj_data.get(cur + 12..cur + 16)?.try_into().ok()?);
+            let ang_min = f32::from_le_bytes(obj_data.get(cur + 16..cur + 20)?.try_into().ok()?);
+            let ang_def = f32::from_le_bytes(obj_data.get(cur + 20..cur + 24)?.try_into().ok()?);
+            cur += 24;
+
+            physics_settings.push(serde_json::json!({
+                "Id": setting_id,
+                "Input": inputs,
+                "Output": outputs,
+                "Vertices": vertices,
+                "Normalization": {
+                    "Position": { "Minimum": pos_min, "Default": pos_def, "Maximum": pos_max },
+                    "Angle": { "Minimum": ang_min, "Default": ang_def, "Maximum": ang_max }
+                }
+            }));
+        }
+
+        if physics_settings.is_empty() {
+            return None;
+        }
+
+        let full_json = serde_json::json!({
+            "Version": 3,
+            "Meta": {
+                "PhysicsSettingCount": physics_settings.len(),
+                "TotalInputCount": total_inputs,
+                "TotalOutputCount": total_outputs,
+                "VertexCount": total_vertices,
+                "EffectiveForces": {
+                    "Gravity": { "X": 0.0, "Y": -1.0 },
+                    "Wind": { "X": 0.0, "Y": 0.0 }
+                },
+                "PhysicsDictionary": physics_dict
+            },
+            "PhysicsSettings": physics_settings
+        });
+
+        serde_json::to_vec_pretty(&full_json).ok()
+    }
 }
 
 #[cfg(test)]
@@ -895,6 +1191,23 @@ mod tests {
             let segs = curves[0]["Segments"].as_array().unwrap();
             assert!(!segs.is_empty());
             let _ = std::fs::write("../target/audit_cache/test_mot.motion3.json", &mot_bytes);
+        }
+
+        let mdl_path = Path::new("../target/audit_cache/eCWklI");
+        if mdl_path.exists() {
+            let phys_bytes =
+                UnityExtractor::extract_physics(mdl_path, "live2d_mdl_00001-cmmn-0000-00")
+                    .expect("Physics extraction should succeed for cached 00001 model");
+            let phys_json: serde_json::Value = serde_json::from_slice(&phys_bytes).unwrap();
+            assert_eq!(phys_json["Version"], 3);
+            let settings = phys_json["PhysicsSettings"].as_array().unwrap();
+            assert_eq!(settings.len(), 72);
+            assert_eq!(settings[0]["Input"][0]["Source"]["Id"], "ParamEyeROpen");
+            assert_eq!(
+                settings[0]["Output"][0]["Destination"]["Id"],
+                "ParamHighlightRSwing"
+            );
+            let _ = std::fs::write("../target/audit_cache/test_phys.physics3.json", &phys_bytes);
         }
     }
 }

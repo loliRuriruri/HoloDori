@@ -111,35 +111,43 @@ To prevent conflicting parameter updates and visual jitter, `Live2DModelWrapper`
    ↓
 5. Procedural Breath (CubismBreath)
    ↓
-6. User Manual Overrides (Live sliders in Parameter Inspector)
+6. Authentic Live2D Physics (CubismPhysics subrig simulation)
    ↓
-7. Model Physics & Draw (model.update() + WebGL render)
+7. User Manual Overrides (Live sliders in Parameter Inspector)
+   ↓
+8. Model Finalize & Draw (model.update() + WebGL render)
 ```
 
 ### Key Technical Fixes
 - **Baseline Retention**: Neutral parameter values are saved once during model initialization and restored at the beginning of each frame. The redundant `model.saveParameters()` at the end of the update loop was removed to ensure a clean return to neutral when expressions or motions finish.
 - **Effect IDs Initialization**: `CubismMotion` is initialized with explicit empty effect parameter lists (`setEffectIds([], [])`) to avoid null pointer dereferences during parameter evaluation.
 - **Expression Additive Blending**: HoloDori expressions using blend mode `1` (`Add`) correctly apply subtle emotional offsets on top of baseline poses without wiping out active facial contours.
+- **Physics Precedence Integration**: Authentic Cubism physics evaluates after primary motion, expression, blink, and breath so secondary hair/clothing dynamics react naturally to all movements, while manual inspector sliders evaluate after physics so inspection values are not overridden by physics solvers.
 
 ---
 
 ## 5. Frontend UI Controls
 
-The viewer sidebar in `src/viewer/ViewerControls.tsx` provides three tabs:
+The viewer sidebar in `src/viewer/ViewerControls.tsx` provides four tabs:
 
 1. **Motions Tab**:
    - Filter search input for quick lookup.
    - Category filter pills (`All`, `Joy`, `Smile`, `Yes`, `No`, `Wink`, `Dance`, `Special`, etc.).
    - Play/Stop toggle buttons with real-time state badge (`Playing`, `Stopping`, `Idle`).
-   - Duration readout and replay button.
+   - Duration readout, replay button, and timeline progress bar.
+   - Auto-motion timer toggle and configurable idle delay.
 2. **Expressions Tab**:
    - Filter search input.
    - Current active expression badge with a prominent "Clear Expression" button.
    - Expression cards with one-click "Apply Expression" action.
-3. **Parameters Tab**:
+3. **Favorites Tab**:
+   - Starred characters, outfits, motions, and expressions with instant playback.
+4. **Advanced Tab**:
    - Categorized parameter sliders (Angle, Eye, Eyebrow, Mouth, Body, Hair, Other).
+   - Category filtering pills.
    - Numerical value indicators with non-default highlight.
    - Per-parameter and master "Reset All" buttons.
+   - Live diagnostics (FPS, active motion, expression, physics rigs, MOC version, WebGL info).
 
 ---
 
@@ -148,7 +156,7 @@ The viewer sidebar in `src/viewer/ViewerControls.tsx` provides three tabs:
 All automated tests pass across both backend Rust suites and frontend headless browser environments:
 
 - **Cargo Test Suite**: 76 tests passing (17 unit + 16 importer integration + 15 library batch + 28 pipeline integration).
-- **Frontend Unit Tests**: 7 unit tests covering motion categorization, expression extraction, and pipeline precedence.
+- **Frontend Unit Tests**: 11 unit tests covering motion categorization, expression extraction, pipeline precedence with physics, settings serialization, favorites toggling, recent list capping, and random motion non-repeats.
 - **Headless Edge Browser Runtime Acceptance**:
   - Test Case 1: Model `00007_001` load and parameter inspection (PASS).
   - Test Case 2: Model `00010_001` load and parameter inspection (PASS).
@@ -156,3 +164,6 @@ All automated tests pass across both backend Rust suites and frontend headless b
   - Test Case 4: Real HoloDori motion playback and parameter mutation over time (PASS).
   - Test Case 5: Real HoloDori expression application and neutral reset (PASS).
   - Test Case 6: Concurrent motion, expression, and procedural idle (PASS).
+  - Test Case 7: In-viewer character and outfit switching on same WebGL context (PASS).
+  - Test Case 8: Authentic Live2D physics attachment & 72-subrig evaluation (PASS).
+  - Test Case 9: Player settings, favorites, and recent models persistence (PASS).

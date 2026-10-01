@@ -189,6 +189,16 @@ flowchart TD
   - Procedural breathing and eye blink idle animations.
   - Interactive camera controls: aspect-preserving pan & zoom.
   - Live parameter inspection, categorization, and reset controls.
-- **Phase 4B (Motion & Expression Integration)**: FUTURE.
+- **Phase 4B (Motion & Expression Integration)**: COMPLETED.
+  - Octocache discovery for 202 universal motions and character-scoped expressions.
+  - Binary extraction of `StreamedClip` animation clips and `CubismExpressionData`.
+  - Concurrent motion and expression layering with clean baseline restoration.
+- **Phase 4C (Character Player, Physics & Viewer Productization)**: COMPLETED.
+  - Full productization into dual-mode Character Player (Player Mode vs Advanced Mode).
+  - Authentic Live2D physics extraction from `CubismPhysicsController` MonoBehaviours (72 subrigs).
+  - Execution precedence: Base -> Motion -> Expression -> Blink -> Breath -> Physics -> Overrides -> Draw.
+  - In-viewer continuous character/outfit switching on same WebGL context without memory leaks.
+  - Auto-motion timer and non-repeating random motion playback.
+  - Settings persistence, favorites, and recent models tracking (capped at 10).
 - **Phase 5 (Windows Desktop Wallpaper Mode)**: FUTURE.
 - **Phase 6 (Live2DRecovery Bridge)**: FUTURE.

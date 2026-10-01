@@ -15,6 +15,9 @@ export class ViewerRenderer {
   private _animFrameId: number | null = null;
   private _lastTime = 0;
   private _isPaused = false;
+  private _fps = 0;
+  private _frameCount = 0;
+  private _fpsLastTime = 0;
 
   private _transform: ViewportTransform = {
     zoom: 1.0,
@@ -25,6 +28,7 @@ export class ViewerRenderer {
   private _viewerOptions: ViewerOptions = {
     enableBreath: true,
     enableEyeBlink: true,
+    enablePhysics: true,
   };
 
   private _onContextLostHandler: (e: Event) => void;
@@ -132,15 +136,47 @@ export class ViewerRenderer {
     this._transform.zoom = 1.0;
   }
 
+  public getFps(): number {
+    return this._fps;
+  }
+
+  public getGLInfo(): { vendor: string; renderer: string } {
+    if (!this._gl) return { vendor: 'WebGL', renderer: 'WebGL' };
+    try {
+      const ext = this._gl.getExtension('WEBGL_debug_renderer_info');
+      if (ext) {
+        return {
+          vendor: this._gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) || 'WebGL',
+          renderer: this._gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || 'WebGL',
+        };
+      }
+      return {
+        vendor: this._gl.getParameter(this._gl.VENDOR) || 'WebGL',
+        renderer: this._gl.getParameter(this._gl.RENDERER) || 'WebGL',
+      };
+    } catch {
+      return { vendor: 'WebGL', renderer: 'WebGL' };
+    }
+  }
+
   public start(): void {
     if (this._animFrameId !== null) return;
     this._lastTime = performance.now();
+    this._fpsLastTime = this._lastTime;
+    this._frameCount = 0;
     this._isPaused = false;
 
     const loop = (now: number) => {
       this._animFrameId = requestAnimationFrame(loop);
 
       if (this._isPaused) return;
+
+      this._frameCount++;
+      if (now - this._fpsLastTime >= 500) {
+        this._fps = Math.round((this._frameCount * 1000) / (now - this._fpsLastTime));
+        this._frameCount = 0;
+        this._fpsLastTime = now;
+      }
 
       const deltaMs = now - this._lastTime;
       this._lastTime = now;
