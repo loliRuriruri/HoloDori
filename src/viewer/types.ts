@@ -37,3 +37,43 @@ export interface ModelPackageTarget {
   modelJsonFile?: string;
   displayName?: string;
 }
+
+export interface MotionCatalogEntry {
+  asset_name: string;
+  object_name: string;
+  name: string;
+  category: string;
+  size_bytes: number;
+  md5: string;
+  is_cached: boolean;
+}
+
+export interface ExpressionCatalogEntry {
+  asset_name: string;
+  object_name: string;
+  name: string;
+  character_id: string;
+  outfit_token: string;
+  size_bytes: number;
+  md5: string;
+  is_cached: boolean;
+}
+
+export interface ModelAnimationMetadata {
+  character_id: string;
+  expressions: ExpressionCatalogEntry[];
+  motions: MotionCatalogEntry[];
+}
+
+export type MotionPlaybackState = 'idle' | 'loading' | 'playing' | 'stopping' | 'error';
+
+export interface MotionPlayInfo {
+  assetName: string;
+  name: string;
+  duration: number;
+}
+
+export interface ExpressionPlayInfo {
+  assetName: string;
+  name: string;
+}

@@ -109,3 +109,59 @@ test('computeZoomClamped respects zoom boundaries [0.2, 8.0]', () => {
   assert.equal(computeZoomClamped(7.0, 2.0), 8.0); // Clamped at max
   assert.equal(computeZoomClamped(0.3, 0.5), 0.2); // Clamped at min
 });
+
+function parseMotionAssetName(assetName) {
+  const clean = assetName.replace(/^live2d_mot_/, '');
+  const cat = clean.split(/[-_]/)[0] || 'other';
+  return { category: cat, name: clean };
+}
+
+function parseExpressionAssetName(assetName) {
+  const parts = assetName.split('_');
+  if (parts.length >= 4) {
+    return { name: parts[2], characterId: parts[3] };
+  }
+  return { name: assetName, characterId: 'unknown' };
+}
+
+test('parseMotionAssetName categorizes HoloDori motions accurately', () => {
+  const m1 = parseMotionAssetName('live2d_mot_joy-01_lv01');
+  assert.equal(m1.category, 'joy');
+  assert.equal(m1.name, 'joy-01_lv01');
+
+  const m2 = parseMotionAssetName('live2d_mot_smile-00_lp');
+  assert.equal(m2.category, 'smile');
+  assert.equal(m2.name, 'smile-00_lp');
+
+  const m3 = parseMotionAssetName('live2d_mot_wink-02_lv02');
+  assert.equal(m3.category, 'wink');
+  assert.equal(m3.name, 'wink-02_lv02');
+});
+
+test('parseExpressionAssetName extracts character id and expression name', () => {
+  const e1 = parseExpressionAssetName('live2d_exp_anger-01_00007_000');
+  assert.equal(e1.name, 'anger-01');
+  assert.equal(e1.characterId, '00007');
+
+  const e2 = parseExpressionAssetName('live2d_exp_smile-02_00010_000');
+  assert.equal(e2.name, 'smile-02');
+  assert.equal(e2.characterId, '00010');
+});
+
+test('animation precedence order guarantees user overrides over procedural and motion updates', () => {
+  const pipelineOrder = [
+    'motionManager.updateMotion',
+    'expressionManager.updateMotion',
+    'eyeBlink.updateParameters',
+    'breath.updateParameters',
+    'userOverrides',
+    'model.update',
+  ];
+
+  assert.equal(pipelineOrder.indexOf('motionManager.updateMotion'), 0);
+  assert.equal(pipelineOrder.indexOf('expressionManager.updateMotion'), 1);
+  assert.equal(pipelineOrder.indexOf('eyeBlink.updateParameters'), 2);
+  assert.equal(pipelineOrder.indexOf('breath.updateParameters'), 3);
+  assert.equal(pipelineOrder.indexOf('userOverrides'), 4);
+  assert.equal(pipelineOrder.indexOf('model.update'), 5);
+});

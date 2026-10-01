@@ -558,8 +558,8 @@ export class CubismMotion extends ACubismMotion {
         this._modelCurveIdEyeBlink = null;
         this._modelCurveIdLipSync = null;
         this._modelCurveIdOpacity = null;
-        this._eyeBlinkParameterIds = null;
-        this._lipSyncParameterIds = null;
+        this._eyeBlinkParameterIds = [];
+        this._lipSyncParameterIds = [];
         this._modelOpacity = 1.0;
         this._debugMode = false;
     }

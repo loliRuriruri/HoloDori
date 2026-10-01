@@ -23,7 +23,10 @@ pub fn run() {
             commands::cancel_import,
             commands::get_import_cache_stats,
             commands::clear_import_cache,
-            commands::read_package_file
+            commands::read_package_file,
+            commands::get_model_animations,
+            commands::get_expression_bytes,
+            commands::get_motion_bytes
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

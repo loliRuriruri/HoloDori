@@ -1,10 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import {
   ModelPackageTarget,
   ViewerStatus,
   ViewportTransform,
   ViewerOptions,
   ModelParameterInfo,
+  ModelAnimationMetadata,
+  MotionCatalogEntry,
+  ExpressionCatalogEntry,
+  MotionPlaybackState,
+  MotionPlayInfo,
+  ExpressionPlayInfo,
 } from './types';
 import {
   isCubismCoreAvailable,
@@ -30,6 +37,13 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ target, onBack }) => {
   const [parameters, setParameters] = useState<ModelParameterInfo[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // Animations & Expressions State
+  const [animations, setAnimations] = useState<ModelAnimationMetadata | null>(null);
+  const [isLoadingAnimations, setIsLoadingAnimations] = useState(false);
+  const [motionState, setMotionState] = useState<MotionPlaybackState>('idle');
+  const [currentMotionInfo, setCurrentMotionInfo] = useState<MotionPlayInfo | null>(null);
+  const [currentExpressionInfo, setCurrentExpressionInfo] = useState<ExpressionPlayInfo | null>(null);
+
   const [transform, setTransform] = useState<ViewportTransform>({
     zoom: 1.0,
     panX: 0.0,
@@ -51,6 +65,42 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ target, onBack }) => {
   const handleCanvasDestroy = useCallback(() => {
     setCanvasElement(null);
   }, []);
+
+  // Fetch Available Animations & Expressions for this character
+  useEffect(() => {
+    let isCancelled = false;
+    async function loadAnimations() {
+      setIsLoadingAnimations(true);
+      try {
+        const data = await invoke<ModelAnimationMetadata>('get_model_animations', {
+          characterId: target.characterId,
+          octocachePath: null,
+        });
+        if (!isCancelled) {
+          setAnimations(data);
+        }
+      } catch (e) {
+        if (!isCancelled) {
+          console.warn('[ViewerPage] Could not load animations metadata:', e);
+          setAnimations({
+            character_id: target.characterId,
+            expressions: [],
+            motions: [],
+          });
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingAnimations(false);
+        }
+      }
+    }
+
+    loadAnimations();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [target.characterId]);
 
   // Initialize WebGL and Load Model Package once Canvas is ready
   useEffect(() => {
@@ -127,6 +177,15 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ target, onBack }) => {
           return;
         }
 
+        // Hook up motion and expression state callbacks
+        modelWrapper.getMotionManager().setStateCallback((state, info) => {
+          setMotionState(state);
+          setCurrentMotionInfo(info);
+        });
+        modelWrapper.getExpressionManager().setCallback((info) => {
+          setCurrentExpressionInfo(info);
+        });
+
         modelRef.current = modelWrapper;
         newRenderer.setModel(modelWrapper);
 
@@ -163,6 +222,54 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ target, onBack }) => {
       releaseCubismFramework();
     };
   }, [target, canvasElement]);
+
+  // Motion Actions
+  const handlePlayMotion = useCallback(async (motion: MotionCatalogEntry) => {
+    if (!modelRef.current) return;
+    try {
+      setMotionState('loading');
+      const bytes = await invoke<number[]>('get_motion_bytes', {
+        objectName: motion.object_name,
+        assetName: motion.asset_name,
+        md5: motion.md5,
+        expectedSize: motion.size_bytes,
+      });
+      const uint8 = new Uint8Array(bytes);
+      const ab = uint8.buffer.slice(uint8.byteOffset, uint8.byteOffset + uint8.byteLength);
+      modelRef.current.getMotionManager().playMotion(ab, motion.asset_name, motion.name);
+    } catch (e) {
+      console.error('[ViewerPage] Failed to play motion:', e);
+      setMotionState('error');
+    }
+  }, []);
+
+  const handleStopMotion = useCallback(() => {
+    if (!modelRef.current) return;
+    modelRef.current.getMotionManager().stopMotion();
+  }, []);
+
+  // Expression Actions
+  const handleApplyExpression = useCallback(async (expr: ExpressionCatalogEntry) => {
+    if (!modelRef.current) return;
+    try {
+      const bytes = await invoke<number[]>('get_expression_bytes', {
+        objectName: expr.object_name,
+        assetName: expr.asset_name,
+        md5: expr.md5,
+        expectedSize: expr.size_bytes,
+      });
+      const uint8 = new Uint8Array(bytes);
+      const ab = uint8.buffer.slice(uint8.byteOffset, uint8.byteOffset + uint8.byteLength);
+      modelRef.current.getExpressionManager().applyExpression(ab, expr.asset_name, expr.name);
+    } catch (e) {
+      console.error('[ViewerPage] Failed to apply expression:', e);
+    }
+  }, []);
+
+  const handleClearExpression = useCallback(() => {
+    if (!modelRef.current) return;
+    modelRef.current.getExpressionManager().clearExpression();
+  }, []);
 
   // Viewport camera actions
   const handleZoomIn = useCallback(() => {
@@ -265,6 +372,16 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({ target, onBack }) => {
         onParameterChange={handleParameterChange}
         onParameterReset={handleParameterReset}
         onResetAllParameters={handleResetAllParameters}
+        motions={animations?.motions || []}
+        expressions={animations?.expressions || []}
+        motionState={motionState}
+        currentMotionInfo={currentMotionInfo}
+        currentExpressionInfo={currentExpressionInfo}
+        onPlayMotion={handlePlayMotion}
+        onStopMotion={handleStopMotion}
+        onApplyExpression={handleApplyExpression}
+        onClearExpression={handleClearExpression}
+        isLoadingAnimations={isLoadingAnimations}
       />
 
       {/* Main Viewport */}

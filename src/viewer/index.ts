@@ -7,3 +7,5 @@ export * from './cubism/resources';
 export * from './cubism/model';
 export * from './cubism/renderer';
 export * from './cubism/parameters';
+export * from './cubism/motion';
+export * from './cubism/expression';

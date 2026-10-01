@@ -8,15 +8,29 @@ import { CubismIdHandle } from './framework/id/cubismid';
 import { LoadedModelPackage } from './resources';
 import { ViewerOptions, ModelParameterInfo } from '../types';
 import { extractParameters } from './parameters';
+import { HoloDoriMotionManager } from './motion';
+import { HoloDoriExpressionManager } from './expression';
 
 export class Live2DModelWrapper extends CubismUserModel {
   private _glTextures: WebGLTexture[] = [];
   private _userOverrides: Map<number, number> = new Map();
   private _loadedPackage: LoadedModelPackage | null = null;
+  private _holoMotion: HoloDoriMotionManager;
+  private _holoExpression: HoloDoriExpressionManager;
 
   constructor() {
     super();
     this._modelMatrix = new CubismModelMatrix();
+    this._holoMotion = new HoloDoriMotionManager(this._motionManager);
+    this._holoExpression = new HoloDoriExpressionManager(this._expressionManager);
+  }
+
+  public getMotionManager(): HoloDoriMotionManager {
+    return this._holoMotion;
+  }
+
+  public getExpressionManager(): HoloDoriExpressionManager {
+    return this._holoExpression;
   }
 
   public async init(
@@ -149,20 +163,31 @@ export class Live2DModelWrapper extends CubismUserModel {
 
     model.loadParameters();
 
+    // 1. HoloDori Motion (primary animation)
+    if (this._motionManager) {
+      this._motionManager.updateMotion(model, deltaTimeSeconds);
+    }
+
+    // 2. HoloDori Expression (expression overlay)
+    if (this._expressionManager) {
+      this._expressionManager.updateMotion(model, deltaTimeSeconds);
+    }
+
+    // 3. Procedural Eye Blink
     if (options.enableEyeBlink && this._eyeBlink) {
       this._eyeBlink.updateParameters(model, deltaTimeSeconds);
     }
 
+    // 4. Procedural Breathing Idle
     if (options.enableBreath && this._breath) {
       this._breath.updateParameters(model, deltaTimeSeconds);
     }
 
-    // Apply manual user adjustments over procedural animations
+    // 5. User slider overrides (manual inspection)
     for (const [paramIndex, value] of this._userOverrides.entries()) {
       model.setParameterValueByIndex(paramIndex, value);
     }
 
-    model.saveParameters();
     model.update();
   }
 
@@ -236,6 +261,13 @@ export class Live2DModelWrapper extends CubismUserModel {
     }
     this._glTextures = [];
     this._userOverrides.clear();
+
+    if (this._holoMotion) {
+      this._holoMotion.stopMotion();
+    }
+    if (this._holoExpression) {
+      this._holoExpression.clearExpression();
+    }
 
     this.deleteRenderer();
     this.release();

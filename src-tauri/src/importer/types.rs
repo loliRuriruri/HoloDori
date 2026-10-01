@@ -30,6 +30,36 @@ pub struct ModelCatalogEntry {
     pub is_cached: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MotionCatalogEntry {
+    pub asset_name: String,
+    pub object_name: String,
+    pub name: String,
+    pub category: String,
+    pub size_bytes: u64,
+    pub md5: String,
+    pub is_cached: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExpressionCatalogEntry {
+    pub asset_name: String,
+    pub object_name: String,
+    pub name: String,
+    pub character_id: String,
+    pub outfit_token: String,
+    pub size_bytes: u64,
+    pub md5: String,
+    pub is_cached: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelAnimationMetadata {
+    pub character_id: String,
+    pub expressions: Vec<ExpressionCatalogEntry>,
+    pub motions: Vec<MotionCatalogEntry>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ImportPhase {

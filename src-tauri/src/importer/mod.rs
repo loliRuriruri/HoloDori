@@ -96,6 +96,86 @@ impl ImporterCoordinator {
         self.cache_manager.clear_cache()
     }
 
+    /// Loads animation metadata (character expressions + all motions) from octocache.
+    pub fn get_model_animations(
+        &self,
+        character_id: &str,
+        octocache_path: Option<&Path>,
+    ) -> Result<ModelAnimationMetadata, DomainError> {
+        let octo_path_buf;
+        let path = if let Some(p) = octocache_path {
+            p
+        } else {
+            let detection = Self::detect_steam();
+            if let Some(p_str) = detection.octocache_path {
+                octo_path_buf = std::path::PathBuf::from(p_str);
+                &octo_path_buf
+            } else {
+                return Err(DomainError::importer(
+                    ErrorCode::ErrImporterFailed,
+                    "No HoloDori octocache catalog found on system",
+                ));
+            }
+        };
+
+        let bytes = fs::read(path).map_err(|e| {
+            DomainError::io(
+                path,
+                format!("Failed to read octocache file {}: {e}", path.display()),
+            )
+        })?;
+
+        CatalogLoader::get_model_animations_from_bytes(&bytes, character_id, &self.cache_manager)
+    }
+
+    /// Acquires expression bundle (cache or CDN) and extracts .exp3.json bytes.
+    pub async fn acquire_and_extract_expression(
+        &self,
+        object_name: &str,
+        asset_name: &str,
+        md5: &str,
+        expected_size: Option<u64>,
+    ) -> Result<Vec<u8>, DomainError> {
+        let cancel_clone = self.cancel_token.clone();
+        let bundle_path = self
+            .acquisition
+            .acquire_bundle(
+                object_name,
+                md5,
+                expected_size,
+                &self.cache_manager,
+                cancel_clone,
+                |_rec, _tot| {},
+            )
+            .await?;
+
+        UnityExtractor::extract_expression(&bundle_path, asset_name)
+    }
+
+    /// Acquires motion bundle (cache or CDN) and extracts .motion3.json bytes.
+    pub async fn acquire_and_extract_motion(
+        &self,
+        object_name: &str,
+        asset_name: &str,
+        md5: &str,
+        expected_size: Option<u64>,
+    ) -> Result<Vec<u8>, DomainError> {
+        let cancel_clone = self.cancel_token.clone();
+        let bundle_path = self
+            .acquisition
+            .acquire_bundle(
+                object_name,
+                md5,
+                expected_size,
+                &self.cache_manager,
+                cancel_clone,
+                |_rec, _tot| {},
+            )
+            .await?;
+
+        UnityExtractor::extract_motion(&bundle_path, asset_name)
+    }
+
     /// Imports selected models from the catalog into the destination directory.
     pub async fn import_models<F>(
         &self,

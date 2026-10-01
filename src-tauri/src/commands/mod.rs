@@ -315,6 +315,49 @@ pub async fn read_package_file(
         .map_err(|e| format!("Failed to read {}: {e}", canonical_target.display()))
 }
 
+#[command]
+pub async fn get_model_animations(
+    state: tauri::State<'_, ImporterState>,
+    character_id: String,
+    octocache_path: Option<String>,
+) -> Result<crate::importer::ModelAnimationMetadata, String> {
+    let octo_path = octocache_path.map(PathBuf::from);
+    state
+        .coordinator
+        .get_model_animations(&character_id, octo_path.as_deref())
+        .map_err(|e| e.to_string())
+}
+
+#[command]
+pub async fn get_expression_bytes(
+    state: tauri::State<'_, ImporterState>,
+    object_name: String,
+    asset_name: String,
+    md5: String,
+    expected_size: Option<u64>,
+) -> Result<Vec<u8>, String> {
+    state
+        .coordinator
+        .acquire_and_extract_expression(&object_name, &asset_name, &md5, expected_size)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[command]
+pub async fn get_motion_bytes(
+    state: tauri::State<'_, ImporterState>,
+    object_name: String,
+    asset_name: String,
+    md5: String,
+    expected_size: Option<u64>,
+) -> Result<Vec<u8>, String> {
+    state
+        .coordinator
+        .acquire_and_extract_motion(&object_name, &asset_name, &md5, expected_size)
+        .await
+        .map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -358,5 +401,14 @@ mod tests {
         let traversal = read_package_file(pkg_str.clone(), "../secret.txt".into()).await;
         assert!(traversal.is_err());
         assert!(traversal.unwrap_err().contains("escapes package directory"));
+    }
+
+    #[tokio::test]
+    async fn test_animation_commands_octocache_not_found() {
+        // Test with non-existent path
+        let coordinator = Arc::new(crate::importer::ImporterCoordinator::new());
+        let res = coordinator
+            .get_model_animations("00007", Some(std::path::Path::new("non_existent_octo.dat")));
+        assert!(res.is_err());
     }
 }
