@@ -164,3 +164,14 @@ The Character Player and System Tray communicate with the Desktop Character Wind
   ```
 - **Pause Support**: When paused, `ViewerRenderer` halts all WebGL render calls, updates, and RAF computations, consuming 0% GPU while keeping model state loaded in VRAM.
 - **20-Cycle Lifecycle Stress Test**: Verified in headless browser runtime tests—repeatedly loading, unloading, and switching models across 20 cycles introduces zero memory leaks, orphaned WebGL textures, or crashes.
+
+---
+
+## 8. Integration with True Windows Wallpaper Mode (HDM.AGENT.5B)
+
+The Desktop Character Window seamlessly transitions between **Desktop Overlay Mode** and **True Windows Wallpaper Mode**:
+- In **Overlay Mode**, the window floats as an always-on-top or standard desktop window.
+- In **Wallpaper Mode**, the window is reparented directly beneath desktop icons inside Windows Explorer's `WorkerW` or `Progman` hierarchy (`SetParent`), allowing desktop icons to remain fully interactive.
+- Seamless, zero-flicker switching between Overlay and Wallpaper modes is supported in real time without reloading the Live2D model or reconstructing the WebGL context.
+- For complete technical specifications, see [`docs/WALLPAPER_MODE.md`](file:///D:/test/holodori/docs/WALLPAPER_MODE.md) and [`docs/WINDOWS_WALLPAPER_HOST_AUDIT.md`](file:///D:/test/holodori/docs/WINDOWS_WALLPAPER_HOST_AUDIT.md).
+

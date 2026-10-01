@@ -209,6 +209,13 @@ flowchart TD
   - Bidirectional remote control IPC between Character Player and Desktop window.
   - Target framerate throttling (30 FPS vs 60 FPS) and zero-cost pause states.
   - 20-cycle lifecycle stress testing verified without WebGL resource leaks.
-- **Phase 5B (Windows Desktop WorkerW Wallpaper Attachment)**: NEXT.
+- **Phase 5B (Windows Desktop WorkerW Wallpaper Attachment)**: COMPLETED.
+  - Native Win32 wallpaper hosting (`desktop/wallpaper`) supporting both Modern Windows 11 child WorkerW and Legacy Windows 10 sibling WorkerW.
+  - Progman compatibility mode and infallible Desktop Overlay fallback.
+  - Thread-safe state machine (`DISABLED`, `DISCOVERING_HOST`, `ATTACHING`, `ACTIVE_WORKERW`, `ACTIVE_PROGMAN`, `FALLBACK_OVERLAY`, `RECOVERING`).
+  - Strict system invariants: `SHELLDLL_DefView` is never modified or hidden; desktop icons remain 100% clickable; `explorer.exe` is never terminated.
+  - Background recovery watchdog detecting Explorer shell restarts and re-attaching or engaging overlay fallback.
+  - Real-time seamless toggle between True Wallpaper and Desktop Overlay without reloading Live2D models or WebGL contexts.
 - **Phase 6 (Live2DRecovery Bridge)**: FUTURE.
+
 

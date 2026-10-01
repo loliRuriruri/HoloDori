@@ -214,6 +214,28 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({
     }
   }, []);
 
+  const handleSetAsWallpaper = useCallback(async () => {
+    try {
+      const ds = playerSettings.desktop;
+      await invoke('enable_wallpaper', {
+        req: {
+          character_id: currentTarget.characterId,
+          outfit_id: currentTarget.outfitId,
+          package_dir: currentTarget.packageDir,
+          display_name: currentTarget.displayName,
+          preference: playerSettings.wallpaper?.preference || 'auto',
+          x: ds?.x,
+          y: ds?.y,
+          width: ds?.width,
+          height: ds?.height,
+        },
+      });
+      setIsDesktopActive(true);
+    } catch (err) {
+      console.error('[ViewerPage] Failed to set model as wallpaper:', err);
+    }
+  }, [currentTarget, playerSettings.desktop, playerSettings.wallpaper]);
+
   const handleRemotePlayRandomMotion = useCallback(() => {
     invoke('send_desktop_control', { action: 'random_motion', payload: null }).catch(() => {});
   }, []);
@@ -889,6 +911,7 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({
         diagnostics={diagnostics}
         isDesktopActive={isDesktopActive}
         onSendToDesktop={handleSendToDesktop}
+        onSetAsWallpaper={handleSetAsWallpaper}
         onCloseDesktop={handleCloseDesktop}
         onRemotePlayRandomMotion={handleRemotePlayRandomMotion}
       />

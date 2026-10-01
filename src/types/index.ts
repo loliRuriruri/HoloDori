@@ -233,3 +233,48 @@ export interface ModelAnimationMetadata {
   motions: MotionCatalogEntry[];
 }
 
+export type WallpaperHostKind = 'worker_w' | 'progman' | 'desktop_overlay';
+
+export type WallpaperState =
+  | 'disabled'
+  | 'discovering_host'
+  | 'attaching'
+  | 'active_worker_w'
+  | 'active_progman'
+  | 'fallback_overlay'
+  | 'recovering'
+  | 'error';
+
+export type WallpaperHostPreference = 'auto' | 'worker_w' | 'progman' | 'desktop_overlay';
+
+export interface WallpaperStatus {
+  state: WallpaperState;
+  active_host: WallpaperHostKind;
+  host_hwnd: string | null;
+  is_wallpaper_active: boolean;
+  is_fallback: boolean;
+  error_message: string | null;
+  timestamp_utc: string;
+}
+
+export interface WallpaperDiagnostics {
+  os_caption: string;
+  os_version: string;
+  build_number: string;
+  display_version: string;
+  explorer_version: string;
+  topology: string;
+  status: WallpaperStatus;
+  host_info?: {
+    host_kind: WallpaperHostKind;
+    host_hwnd: number;
+    host_hwnd_hex: string;
+    progman_hwnd: number;
+    defview_hwnd: number;
+    workerw_hwnd?: number;
+    topology: string;
+    explorer_pid: number;
+  };
+  supported_hosts: WallpaperHostKind[];
+}
+

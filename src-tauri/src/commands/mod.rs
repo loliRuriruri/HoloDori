@@ -12,6 +12,12 @@ pub use desktop::{
     DesktopState,
 };
 
+pub mod wallpaper;
+pub use wallpaper::{
+    disable_wallpaper, enable_wallpaper, get_wallpaper_diagnostics, get_wallpaper_state,
+    recover_wallpaper, set_wallpaper_mode, WallpaperAppState,
+};
+
 use crate::domain::library::batch::BatchBuildManager;
 use crate::domain::types::{
     BatchBuildReport, BuildStatus, CharacterLibrary, ConflictPolicy, MatchedPair,

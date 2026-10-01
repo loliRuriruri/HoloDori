@@ -111,6 +111,27 @@ export const DEFAULT_DESKTOP_SETTINGS: DesktopWindowSettings = {
   paused: false,
 };
 
+export type WallpaperHostPreference = 'auto' | 'worker_w' | 'progman' | 'desktop_overlay';
+
+export interface WallpaperSettings {
+  enabled: boolean;
+  preference: WallpaperHostPreference;
+  fallbackEnabled: boolean;
+  autoRecover: boolean;
+  monitorMode: 'primary' | 'all' | 'custom';
+  selectedMonitor?: string;
+  targetFps: 30 | 60;
+}
+
+export const DEFAULT_WALLPAPER_SETTINGS: WallpaperSettings = {
+  enabled: false,
+  preference: 'auto',
+  fallbackEnabled: true,
+  autoRecover: true,
+  monitorMode: 'primary',
+  targetFps: 60,
+};
+
 export interface ViewerSettings {
   mode: ViewerMode;
   background: ViewerBackground;
@@ -123,6 +144,7 @@ export interface ViewerSettings {
   lastCharacterId?: string;
   lastOutfitId?: string;
   desktop?: DesktopWindowSettings;
+  wallpaper?: WallpaperSettings;
 }
 
 export interface PlayerFavorites {

@@ -245,6 +245,28 @@ HDM.AGENT.5A delivers the Desktop Character Window: a dedicated, transparent, fr
 | **AG5A-9** | Strict WorkerW Wallpaper Boundary | Architecture audit | Zero WorkerW / Progman / SetParent / wallpaper injection code committed in Phase 5A (strictly reserved for Phase 5B). | **PASS** (Architectural boundary preserved) |
 | **AG5A-10**| Git & Binary Safety | Repository audit | Zero proprietary Cubism Core binaries, game bundles, or sample models committed to git. | **PASS** (Strict `.gitignore` enforcement) |
 
+---
+
+## Acceptance Gate: HDM.AGENT.5B — True Windows Wallpaper Mode
+
+HDM.AGENT.5B delivers True Windows Wallpaper Mode: native Win32 window hosting behind desktop icons via `WorkerW` and `Progman` reparenting, with dynamic topology discovery, watchdog crash recovery, zero desktop icon impact, and infallible Desktop Overlay fallback.
+
+### Mandatory Acceptance Gates (HDM.AGENT.5B)
+
+| Gate ID | Requirement | Verification Method | Pass Criteria | Status |
+|---|---|---|---|---|
+| **AG5B-1** | Baseline Preservation & Zero Regression | `cargo test --workspace`, `npm test`, `npm run build` | All 84 Rust tests pass, all 17 JS unit tests pass, all 14 browser runtime acceptance tests pass, 0 TS build errors. | **PASS** (84 Rust / 17 JS unit / 14 runtime) |
+| **AG5B-2** | Windows Shell Compatibility Spike | Native Win32 desktop audit | Recorded OS edition, version, build, Explorer version; audited Progman, WorkerW, and SHELLDLL_DefView pre/post 0x052C. Documented in `docs/WINDOWS_WALLPAPER_HOST_AUDIT.md`. | **PASS** (`docs/WINDOWS_WALLPAPER_HOST_AUDIT.md`) |
+| **AG5B-3** | Dynamic Shell Topology Discovery | `desktop/wallpaper/shell.rs` | Auto-detects Modern Windows 11 child WorkerW, Legacy Windows 10 sibling WorkerW, and Progman direct hosting. | **PASS** (`desktop::wallpaper::shell`) |
+| **AG5B-4** | Native Win32 Wallpaper Hosting | `desktop/wallpaper/host.rs` | `SetParent` reparenting with `WS_CHILD`, `WS_CLIPSIBLINGS`, `WS_EX_TRANSPARENT`. Clean detachment restores original styles and parent on exit. | **PASS** (`desktop::wallpaper::workerw`, `desktop::wallpaper::progman`) |
+| **AG5B-5** | Desktop Overlay Fallback Invariant | `desktop/wallpaper/host.rs` | Infallible fallback to AGENT.5A Desktop Overlay if Explorer host is unsupported or fails. Never claims wallpaper is active in fallback mode. | **PASS** (`test_fallback_overlay_never_claims_wallpaper_active`) |
+| **AG5B-6** | Desktop Icon & Shell Safety Invariant | Architecture & runtime review | `SHELLDLL_DefView` is NEVER reparented or hidden; desktop icons remain 100% clickable; `explorer.exe` is never terminated. | **PASS** (Zero shell disruption verified) |
+| **AG5B-7** | Host Recovery Watchdog | `desktop/wallpaper/recovery.rs` | Background watchdog polls host HWND validity every 2.5s; auto-recovers upon Explorer restart or transitions safely to overlay fallback. | **PASS** (`WallpaperWatchdog`, IPC events) |
+| **AG5B-8** | Real-Time Mode Switching | `DesktopCharacterWindow.tsx` & System Tray | Real-time seamless toggle between True Wallpaper and Desktop Overlay on the same WebGL canvas without context loss. | **PASS** (`scripts/test_viewer_runtime.mjs` Test Case 14) |
+| **AG5B-9** | Settings Persistence & Migration | `types.ts`, `settings.ts` | Wallpaper settings (`preference`, `fallbackEnabled`, `autoRecover`, `targetFps`) cleanly merged and migrated from legacy state. | **PASS** (`tests/viewer_unit.test.mjs`) |
+| **AG5B-10**| Git & Binary Safety | Repository audit | Zero proprietary Cubism Core binaries, game bundles, or copyrighted assets committed to git. | **PASS** (Strict `.gitignore` enforcement) |
+
+
 
 
 

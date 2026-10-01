@@ -338,6 +338,15 @@ function clampWindowPosition(x, y, width, height, monitors) {
   return { x: safeX, y: safeY };
 }
 
+const DEFAULT_WALLPAPER_SETTINGS = {
+  enabled: false,
+  preference: 'auto',
+  fallbackEnabled: true,
+  autoRecover: true,
+  monitorMode: 'primary',
+  targetFps: 60,
+};
+
 function migratePlayerSettings(raw) {
   const settings = raw.settings || {};
   return {
@@ -347,7 +356,24 @@ function migratePlayerSettings(raw) {
       ...DEFAULT_DESKTOP_SETTINGS,
       ...(settings.desktop || {}),
     },
+    wallpaper: {
+      ...DEFAULT_WALLPAPER_SETTINGS,
+      ...(settings.wallpaper || {}),
+    },
   };
+}
+
+function resolveWallpaperHost(pref, discovered) {
+  if (pref === 'desktop_overlay') {
+    return { kind: 'desktop_overlay', state: 'fallback_overlay', is_wallpaper_active: false, is_fallback: true };
+  }
+  if ((pref === 'auto' || pref === 'worker_w') && discovered.workerw_hwnd) {
+    return { kind: 'worker_w', state: 'active_worker_w', is_wallpaper_active: true, is_fallback: false };
+  }
+  if ((pref === 'auto' || pref === 'progman') && discovered.progman_hwnd) {
+    return { kind: 'progman', state: 'active_progman', is_wallpaper_active: true, is_fallback: false };
+  }
+  return { kind: 'desktop_overlay', state: 'fallback_overlay', is_wallpaper_active: false, is_fallback: true };
 }
 
 test('DEFAULT_DESKTOP_SETTINGS defines robust frameless desktop baseline', () => {
@@ -361,7 +387,16 @@ test('DEFAULT_DESKTOP_SETTINGS defines robust frameless desktop baseline', () =>
   assert.equal(DEFAULT_DESKTOP_SETTINGS.paused, false);
 });
 
-test('migratePlayerSettings correctly upgrades legacy state missing desktop field', () => {
+test('DEFAULT_WALLPAPER_SETTINGS defines safe baseline with auto host discovery', () => {
+  assert.equal(DEFAULT_WALLPAPER_SETTINGS.enabled, false);
+  assert.equal(DEFAULT_WALLPAPER_SETTINGS.preference, 'auto');
+  assert.equal(DEFAULT_WALLPAPER_SETTINGS.fallbackEnabled, true);
+  assert.equal(DEFAULT_WALLPAPER_SETTINGS.autoRecover, true);
+  assert.equal(DEFAULT_WALLPAPER_SETTINGS.monitorMode, 'primary');
+  assert.equal(DEFAULT_WALLPAPER_SETTINGS.targetFps, 60);
+});
+
+test('migratePlayerSettings correctly upgrades legacy state missing desktop and wallpaper fields', () => {
   const legacy = {
     settings: {
       mode: 'player',
@@ -376,6 +411,43 @@ test('migratePlayerSettings correctly upgrades legacy state missing desktop fiel
   assert.equal(migrated.desktop.fps, 60);
   assert.equal(migrated.desktop.scale, 1.0);
   assert.equal(migrated.desktop.alwaysOnTop, true);
+
+  assert.ok(migrated.wallpaper);
+  assert.equal(migrated.wallpaper.preference, 'auto');
+  assert.equal(migrated.wallpaper.autoRecover, true);
+  assert.equal(migrated.wallpaper.fallbackEnabled, true);
+});
+
+test('resolveWallpaperHost enforces WorkerW -> Progman -> Overlay fallback priority', () => {
+  // 1. Both WorkerW and Progman available -> WorkerW selected under auto
+  const fullHost = { workerw_hwnd: 0x1234, progman_hwnd: 0x5678 };
+  const r1 = resolveWallpaperHost('auto', fullHost);
+  assert.equal(r1.kind, 'worker_w');
+  assert.equal(r1.state, 'active_worker_w');
+  assert.equal(r1.is_wallpaper_active, true);
+  assert.equal(r1.is_fallback, false);
+
+  // 2. Only Progman available -> Progman selected under auto
+  const progmanOnly = { workerw_hwnd: null, progman_hwnd: 0x5678 };
+  const r2 = resolveWallpaperHost('auto', progmanOnly);
+  assert.equal(r2.kind, 'progman');
+  assert.equal(r2.state, 'active_progman');
+  assert.equal(r2.is_wallpaper_active, true);
+  assert.equal(r2.is_fallback, false);
+
+  // 3. No host available -> Fallback to Desktop Overlay
+  const noHost = { workerw_hwnd: null, progman_hwnd: null };
+  const r3 = resolveWallpaperHost('auto', noHost);
+  assert.equal(r3.kind, 'desktop_overlay');
+  assert.equal(r3.state, 'fallback_overlay');
+  assert.equal(r3.is_wallpaper_active, false, 'Must never report wallpaper active in fallback!');
+  assert.equal(r3.is_fallback, true);
+
+  // 4. Explicit DesktopOverlay preference -> Always fallback overlay
+  const r4 = resolveWallpaperHost('desktop_overlay', fullHost);
+  assert.equal(r4.kind, 'desktop_overlay');
+  assert.equal(r4.is_wallpaper_active, false);
+  assert.equal(r4.is_fallback, true);
 });
 
 test('clampDesktopScale enforces [0.25, 3.0] scale limits', () => {
@@ -408,4 +480,5 @@ test('clampWindowPosition preserves in-bounds window and recovers off-screen coo
   assert.ok(offscreen.x >= 0 && offscreen.x <= 1920, `Recovered x ${offscreen.x} must be on primary monitor`);
   assert.ok(offscreen.y >= 0 && offscreen.y <= 1080, `Recovered y ${offscreen.y} must be on primary monitor`);
 });
+
 

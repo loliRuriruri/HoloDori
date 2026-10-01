@@ -17,6 +17,7 @@ import {
   ModelAnimationMetadata,
   ModelPackageTarget,
 } from '../viewer/types';
+import { WallpaperStatus } from '../types';
 import { loadPlayerState, savePlayerState } from '../viewer/settings';
 
 interface SwitchModelPayload {
@@ -63,6 +64,9 @@ export const DesktopCharacterWindow: React.FC = () => {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Wallpaper mode host status
+  const [wallpaperStatus, setWallpaperStatus] = useState<WallpaperStatus | null>(null);
+
   // Animations catalog
   const [animations, setAnimations] = useState<ModelAnimationMetadata | null>(null);
 
@@ -82,6 +86,23 @@ export const DesktopCharacterWindow: React.FC = () => {
       document.documentElement.classList.remove('desktop-mode');
       document.body.classList.remove('desktop-mode');
     };
+  }, []);
+
+  // Fetch initial wallpaper state and subscribe to changes
+  useEffect(() => {
+    if (isTauriEnv()) {
+      invoke<WallpaperStatus>('get_wallpaper_state')
+        .then((res) => setWallpaperStatus(res))
+        .catch(() => {});
+
+      const unlistenPromise = listen<WallpaperStatus>('wallpaper-status-changed', (event) => {
+        setWallpaperStatus(event.payload);
+      });
+
+      return () => {
+        unlistenPromise.then((fn) => fn());
+      };
+    }
   }, []);
 
   // Load persisted desktop settings on mount
@@ -639,6 +660,72 @@ export const DesktopCharacterWindow: React.FC = () => {
             </button>
           </div>
 
+          {/* Wallpaper Host Badge & Toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span
+              style={{
+                fontSize: '9px',
+                padding: '2px 5px',
+                borderRadius: '4px',
+                background: wallpaperStatus?.is_wallpaper_active
+                  ? 'rgba(16, 185, 129, 0.25)'
+                  : wallpaperStatus?.is_fallback
+                  ? 'rgba(234, 179, 8, 0.25)'
+                  : 'rgba(59, 130, 246, 0.25)',
+                border: `1px solid ${
+                  wallpaperStatus?.is_wallpaper_active
+                    ? '#10b981'
+                    : wallpaperStatus?.is_fallback
+                    ? '#eab308'
+                    : '#3b82f6'
+                }`,
+                color: wallpaperStatus?.is_wallpaper_active
+                  ? '#34d399'
+                  : wallpaperStatus?.is_fallback
+                  ? '#facc15'
+                  : '#60a5fa',
+                fontWeight: 'bold',
+                letterSpacing: '0.3px',
+              }}
+              title={
+                wallpaperStatus?.is_wallpaper_active
+                  ? `True Wallpaper Active: hosted on ${wallpaperStatus.active_host}`
+                  : wallpaperStatus?.is_fallback
+                  ? `Fallback Overlay Mode (${wallpaperStatus.error_message || 'Explorer host unavailable'})`
+                  : 'Desktop Overlay Mode'
+              }
+            >
+              {wallpaperStatus?.is_wallpaper_active
+                ? `WP: ${wallpaperStatus.active_host.toUpperCase()}`
+                : wallpaperStatus?.is_fallback
+                ? 'OVERLAY (FALLBACK)'
+                : 'OVERLAY'}
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isTauriEnv()) {
+                  const nextPref = wallpaperStatus?.is_wallpaper_active
+                    ? 'desktop_overlay'
+                    : 'auto';
+                  invoke('set_wallpaper_mode', { preference: nextPref }).catch(() => {});
+                }
+              }}
+              style={{
+                background: wallpaperStatus?.is_wallpaper_active ? '#065f46' : '#21252b',
+                border: `1px solid ${wallpaperStatus?.is_wallpaper_active ? '#10b981' : '#3e4451'}`,
+                borderRadius: '4px',
+                color: '#e2e8f0',
+                padding: '2px 5px',
+                fontSize: '10px',
+                cursor: 'pointer',
+              }}
+              title="Toggle Wallpaper Mode (WorkerW / Progman) vs Overlay"
+            >
+              {wallpaperStatus?.is_wallpaper_active ? '🖼️ Wallpaper' : '🪟 Overlay'}
+            </button>
+          </div>
+
           {/* Quick Toggles: FPS, Always on Top, Click-Through */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <button
@@ -812,6 +899,34 @@ export const DesktopCharacterWindow: React.FC = () => {
             style={contextMenuItemStyle}
           >
             🖱️ Enable Click-Through
+          </button>
+          <div style={{ height: '1px', background: '#334155', margin: '4px 0' }} />
+          <button
+            onClick={() => {
+              if (isTauriEnv()) {
+                const nextPref = wallpaperStatus?.is_wallpaper_active
+                  ? 'desktop_overlay'
+                  : 'auto';
+                invoke('set_wallpaper_mode', { preference: nextPref }).catch(() => {});
+              }
+              setContextMenuPos(null);
+            }}
+            style={contextMenuItemStyle}
+          >
+            {wallpaperStatus?.is_wallpaper_active
+              ? '🪟 Switch to Overlay Mode'
+              : '🖼️ Switch to True Wallpaper'}
+          </button>
+          <button
+            onClick={() => {
+              if (isTauriEnv()) {
+                invoke('recover_wallpaper').catch(() => {});
+              }
+              setContextMenuPos(null);
+            }}
+            style={contextMenuItemStyle}
+          >
+            🔄 Recover Wallpaper Host
           </button>
           <div style={{ height: '1px', background: '#334155', margin: '4px 0' }} />
           <button

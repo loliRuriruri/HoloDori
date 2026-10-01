@@ -3,6 +3,7 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{Emitter, Manager};
 
 pub mod commands;
+pub mod desktop;
 pub mod domain;
 pub mod importer;
 
@@ -11,6 +12,7 @@ pub fn run() {
         .manage(commands::BatchState::default())
         .manage(commands::ImporterState::default())
         .manage(commands::DesktopState::default())
+        .manage(commands::WallpaperAppState::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
@@ -65,6 +67,27 @@ pub fn run() {
                 true,
                 None::<&str>,
             )?;
+            let mode_wallpaper = MenuItem::with_id(
+                app,
+                "mode_wallpaper",
+                "Mode: True Wallpaper (WorkerW / Progman)",
+                true,
+                None::<&str>,
+            )?;
+            let mode_overlay = MenuItem::with_id(
+                app,
+                "mode_overlay",
+                "Mode: Desktop Overlay",
+                true,
+                None::<&str>,
+            )?;
+            let recover_wp = MenuItem::with_id(
+                app,
+                "recover_wp",
+                "Recover Wallpaper Host",
+                true,
+                None::<&str>,
+            )?;
             let sep2 = PredefinedMenuItem::separator(app)?;
             let close_desktop = MenuItem::with_id(
                 app,
@@ -83,6 +106,9 @@ pub fn run() {
                     &sep1,
                     &show_desktop,
                     &hide_desktop,
+                    &mode_wallpaper,
+                    &mode_overlay,
+                    &recover_wp,
                     &interactive_mode,
                     &click_through_mode,
                     &toggle_aot,
@@ -112,6 +138,32 @@ pub fn run() {
                         if let Some(win) = app.get_webview_window("desktop_character") {
                             let _ = win.hide();
                         }
+                    }
+                    "mode_wallpaper" => {
+                        let app_handle = app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let _ = commands::wallpaper::set_wallpaper_mode(
+                                app_handle,
+                                desktop::wallpaper::WallpaperHostPreference::Auto,
+                            )
+                            .await;
+                        });
+                    }
+                    "mode_overlay" => {
+                        let app_handle = app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let _ = commands::wallpaper::set_wallpaper_mode(
+                                app_handle,
+                                desktop::wallpaper::WallpaperHostPreference::DesktopOverlay,
+                            )
+                            .await;
+                        });
+                    }
+                    "recover_wp" => {
+                        let app_handle = app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let _ = commands::wallpaper::recover_wallpaper(app_handle).await;
+                        });
                     }
                     "interactive_mode" => {
                         let app_handle = app.clone();
@@ -156,6 +208,8 @@ pub fn run() {
                         });
                     }
                     "exit_app" => {
+                        let wp_state = app.state::<commands::WallpaperAppState>();
+                        let _ = wp_state.manager.detach();
                         app.exit(0);
                     }
                     _ => {}
@@ -223,7 +277,13 @@ pub fn run() {
             commands::desktop::set_desktop_click_through,
             commands::desktop::set_desktop_always_on_top,
             commands::desktop::set_desktop_bounds,
-            commands::desktop::send_desktop_control
+            commands::desktop::send_desktop_control,
+            commands::wallpaper::get_wallpaper_state,
+            commands::wallpaper::get_wallpaper_diagnostics,
+            commands::wallpaper::enable_wallpaper,
+            commands::wallpaper::disable_wallpaper,
+            commands::wallpaper::recover_wallpaper,
+            commands::wallpaper::set_wallpaper_mode
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

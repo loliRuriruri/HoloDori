@@ -33,6 +33,14 @@ unity-rs-core = "0.5.2"
 reqwest = { version = "0.12", features = ["stream"] }
 futures-util = "0.3"
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Threading"
+] }
+
 [dev-dependencies]
 tempfile = "3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

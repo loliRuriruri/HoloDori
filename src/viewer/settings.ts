@@ -1,5 +1,11 @@
 import { invoke } from '@tauri-apps/api/core';
-import { DEFAULT_DESKTOP_SETTINGS, PlayerFavorites, RecentModel, ViewerSettings } from './types';
+import {
+  DEFAULT_DESKTOP_SETTINGS,
+  DEFAULT_WALLPAPER_SETTINGS,
+  PlayerFavorites,
+  RecentModel,
+  ViewerSettings,
+} from './types';
 
 const STORAGE_KEY_SETTINGS = 'hdm_viewer_settings';
 const STORAGE_KEY_FAVORITES = 'hdm_player_favorites';
@@ -15,6 +21,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   autoMotionDelaySec: 3.0,
   zoom: 1.0,
   desktop: { ...DEFAULT_DESKTOP_SETTINGS },
+  wallpaper: { ...DEFAULT_WALLPAPER_SETTINGS },
 };
 
 export const DEFAULT_FAVORITES: PlayerFavorites = {
@@ -41,11 +48,16 @@ export async function loadPlayerState(): Promise<PersistedPlayerState> {
         ...DEFAULT_DESKTOP_SETTINGS,
         ...((raw.settings && raw.settings.desktop) || {}),
       };
+      const mergedWallpaper = {
+        ...DEFAULT_WALLPAPER_SETTINGS,
+        ...((raw.settings && raw.settings.wallpaper) || {}),
+      };
       return {
         settings: {
           ...DEFAULT_VIEWER_SETTINGS,
           ...(raw.settings || {}),
           desktop: mergedDesktop,
+          wallpaper: mergedWallpaper,
         },
         favorites: {
           characters: raw.favorites?.characters || [],
@@ -76,6 +88,10 @@ export async function loadPlayerState(): Promise<PersistedPlayerState> {
           desktop: {
             ...DEFAULT_DESKTOP_SETTINGS,
             ...(parsed.desktop || {}),
+          },
+          wallpaper: {
+            ...DEFAULT_WALLPAPER_SETTINGS,
+            ...(parsed.wallpaper || {}),
           },
         };
       }

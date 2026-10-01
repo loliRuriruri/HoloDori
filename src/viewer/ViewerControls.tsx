@@ -82,6 +82,7 @@ interface ViewerControlsProps {
   // Desktop Window Controls
   isDesktopActive?: boolean;
   onSendToDesktop?: () => void;
+  onSetAsWallpaper?: () => void;
   onCloseDesktop?: () => void;
   onRemotePlayRandomMotion?: () => void;
 }
@@ -149,6 +150,7 @@ export const ViewerControls: React.FC<ViewerControlsProps> = ({
   diagnostics,
   isDesktopActive = false,
   onSendToDesktop,
+  onSetAsWallpaper,
   onCloseDesktop,
   onRemotePlayRandomMotion,
 }) => {
@@ -637,6 +639,29 @@ export const ViewerControls: React.FC<ViewerControlsProps> = ({
                   />
                 )}
               </button>
+
+              {!isDesktopActive && onSetAsWallpaper && (
+                <button
+                  onClick={onSetAsWallpaper}
+                  style={{
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid #10b981',
+                    background: '#064e3b',
+                    color: '#6ee7b7',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontWeight: 500,
+                  }}
+                  title="Host Character Directly on Windows Wallpaper (Behind Desktop Icons)"
+                >
+                  <span>🖼️</span>
+                  <span>Set as Wallpaper</span>
+                </button>
+              )}
 
               {isDesktopActive && onRemotePlayRandomMotion && (
                 <button
