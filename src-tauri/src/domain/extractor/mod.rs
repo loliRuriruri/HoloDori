@@ -1,8 +1,8 @@
+use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::{BufReader, Write};
 use std::path::{Path, PathBuf};
-use serde_json::Value;
-use sha2::{Digest, Sha256};
 use tempfile::NamedTempFile;
 
 use crate::domain::error::{DomainError, ErrorCode};
@@ -51,11 +51,12 @@ pub fn extract_bytes(json_path: &Path) -> Result<Vec<u8>, DomainError> {
     })?;
 
     let reader = BufReader::new(file);
-    let json_val: Value = serde_json::from_reader(reader).map_err(|e| DomainError::JsonSyntaxError {
-        code: ErrorCode::ErrJsonSyntax,
-        path: json_path.to_path_buf(),
-        message: e.to_string(),
-    })?;
+    let json_val: Value =
+        serde_json::from_reader(reader).map_err(|e| DomainError::JsonSyntaxError {
+            code: ErrorCode::ErrJsonSyntax,
+            path: json_path.to_path_buf(),
+            message: e.to_string(),
+        })?;
 
     let mut found = Vec::new();
     find_bytes_arrays(&json_val, &mut found);
@@ -182,11 +183,13 @@ pub fn extract_and_stage_moc(json_path: &Path) -> Result<ExtractedBinary, Domain
         message: format!("Failed to create temp file: {}", e),
     })?;
 
-    temp_file.write_all(&bytes).map_err(|e| DomainError::IoError {
-        code: ErrorCode::ErrIo,
-        path: json_path.to_path_buf(),
-        message: format!("Failed to write to temp file: {}", e),
-    })?;
+    temp_file
+        .write_all(&bytes)
+        .map_err(|e| DomainError::IoError {
+            code: ErrorCode::ErrIo,
+            path: json_path.to_path_buf(),
+            message: format!("Failed to write to temp file: {}", e),
+        })?;
 
     let mut hasher = Sha256::new();
     hasher.update(&bytes);

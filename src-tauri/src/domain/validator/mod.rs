@@ -26,7 +26,9 @@ impl PackageValidator {
 
         macro_rules! run_stage {
             ($name:expr, $code:expr) => {
-                let stage_res: Result<String, DomainError> = (|| -> Result<String, DomainError> { $code })();
+                #[allow(clippy::redundant_closure_call)]
+                let stage_res: Result<String, DomainError> =
+                    (|| -> Result<String, DomainError> { $code })();
                 match stage_res {
                     Ok(msg) => {
                         stages.push(ValidationStageResult {
@@ -52,16 +54,18 @@ impl PackageValidator {
         // Stage A: Source JSON parses
         run_stage!("Stage A: Source JSON parses", {
             if pair.model_type == ModelSourceType::JsonBytes {
-                let content = fs::read_to_string(&pair.model_source).map_err(|e| DomainError::IoError {
-                    code: ErrorCode::ErrIo,
-                    path: pair.model_source.clone(),
-                    message: e.to_string(),
-                })?;
-                let _: serde_json::Value = serde_json::from_str(&content).map_err(|e| DomainError::JsonSyntaxError {
-                    code: ErrorCode::ErrJsonSyntax,
-                    path: pair.model_source.clone(),
-                    message: e.to_string(),
-                })?;
+                let content =
+                    fs::read_to_string(&pair.model_source).map_err(|e| DomainError::IoError {
+                        code: ErrorCode::ErrIo,
+                        path: pair.model_source.clone(),
+                        message: e.to_string(),
+                    })?;
+                let _: serde_json::Value =
+                    serde_json::from_str(&content).map_err(|e| DomainError::JsonSyntaxError {
+                        code: ErrorCode::ErrJsonSyntax,
+                        path: pair.model_source.clone(),
+                        message: e.to_string(),
+                    })?;
                 Ok("Source JSON successfully parsed".to_string())
             } else {
                 Ok("Source is raw MOC3, JSON parsing skipped".to_string())
@@ -86,13 +90,20 @@ impl PackageValidator {
                 message: e.to_string(),
             })?;
             let version = validate_moc3_candidate(&bytes, &package.moc_path)?;
-            Ok(format!("Valid MOC3 binary ({} bytes, Cubism version byte 0x{:02x})", bytes.len(), version))
+            Ok(format!(
+                "Valid MOC3 binary ({} bytes, Cubism version byte 0x{:02x})",
+                bytes.len(),
+                version
+            ))
         });
 
         // Stage D: Output MOC exists
         run_stage!("Stage D: Output MOC exists", {
             if package.moc_path.is_file() {
-                Ok(format!("Output MOC3 exists at {}", package.moc_path.display()))
+                Ok(format!(
+                    "Output MOC3 exists at {}",
+                    package.moc_path.display()
+                ))
             } else {
                 Err(DomainError::ValidationFailed {
                     code: ErrorCode::ErrValidationFailed,
@@ -119,17 +130,21 @@ impl PackageValidator {
                     });
                 }
             }
-            Ok(format!("All {} texture files exist", package.texture_paths.len()))
+            Ok(format!(
+                "All {} texture files exist",
+                package.texture_paths.len()
+            ))
         });
 
         // Stage F: model3 JSON parses
         let mut parsed_manifest_opt = None;
         run_stage!("Stage F: model3 JSON parses", {
-            let content = fs::read_to_string(&package.manifest_path).map_err(|e| DomainError::IoError {
-                code: ErrorCode::ErrIo,
-                path: package.manifest_path.clone(),
-                message: e.to_string(),
-            })?;
+            let content =
+                fs::read_to_string(&package.manifest_path).map_err(|e| DomainError::IoError {
+                    code: ErrorCode::ErrIo,
+                    path: package.manifest_path.clone(),
+                    message: e.to_string(),
+                })?;
             let manifest = Model3Manifest::from_json_str(&content)?;
             parsed_manifest_opt = Some(manifest);
             Ok("model3.json parsed successfully matching schema".to_string())
@@ -143,7 +158,10 @@ impl PackageValidator {
                     return Err(DomainError::ValidationFailed {
                         code: ErrorCode::ErrValidationFailed,
                         stage: "Stage G".to_string(),
-                        reason: format!("Manifest Moc reference does not resolve: {}", moc_ref.display()),
+                        reason: format!(
+                            "Manifest Moc reference does not resolve: {}",
+                            moc_ref.display()
+                        ),
                     });
                 }
                 for tex_rel in &manifest.file_references.textures {
@@ -152,7 +170,10 @@ impl PackageValidator {
                         return Err(DomainError::ValidationFailed {
                             code: ErrorCode::ErrValidationFailed,
                             stage: "Stage G".to_string(),
-                            reason: format!("Manifest Texture reference does not resolve: {}", tex_ref.display()),
+                            reason: format!(
+                                "Manifest Texture reference does not resolve: {}",
+                                tex_ref.display()
+                            ),
                         });
                     }
                 }
@@ -170,7 +191,9 @@ impl PackageValidator {
         run_stage!("Stage H: No output reference escapes model directory", {
             let canon_package = canonicalize_or_clean(&package.package_dir)?;
             if let Some(manifest) = &parsed_manifest_opt {
-                let moc_path = canonicalize_or_clean(&package.package_dir.join(&manifest.file_references.moc))?;
+                let moc_path = canonicalize_or_clean(
+                    &package.package_dir.join(&manifest.file_references.moc),
+                )?;
                 if !moc_path.starts_with(&canon_package) {
                     return Err(DomainError::PathTraversalDetected {
                         code: ErrorCode::ErrPathTraversalDetected,
@@ -192,11 +215,12 @@ impl PackageValidator {
 
         // Stage I: Package can be reopened by our own parser
         run_stage!("Stage I: Package can be reopened by our own parser", {
-            let content = fs::read_to_string(&package.manifest_path).map_err(|e| DomainError::IoError {
-                code: ErrorCode::ErrIo,
-                path: package.manifest_path.clone(),
-                message: e.to_string(),
-            })?;
+            let content =
+                fs::read_to_string(&package.manifest_path).map_err(|e| DomainError::IoError {
+                    code: ErrorCode::ErrIo,
+                    path: package.manifest_path.clone(),
+                    message: e.to_string(),
+                })?;
             let reopened = Model3Manifest::from_json_str(&content)?;
             if reopened.version != 3 || reopened.file_references.textures.is_empty() {
                 return Err(DomainError::ValidationFailed {

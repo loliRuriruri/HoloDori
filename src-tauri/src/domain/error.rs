@@ -62,10 +62,7 @@ pub enum DomainError {
     },
 
     #[error("[{code}] No valid '_bytes' array found in {path}", code = .code.as_str())]
-    NoBytesFound {
-        code: ErrorCode,
-        path: PathBuf,
-    },
+    NoBytesFound { code: ErrorCode, path: PathBuf },
 
     #[error("[{code}] Invalid byte value {value} at index {index} in {path} (must be 0..=255)", code = .code.as_str())]
     InvalidByteValue {
@@ -98,10 +95,7 @@ pub enum DomainError {
     },
 
     #[error("[{code}] No texture image matching model {model_name}", code = .code.as_str())]
-    TextureNotFound {
-        code: ErrorCode,
-        model_name: String,
-    },
+    TextureNotFound { code: ErrorCode, model_name: String },
 
     #[error("[{code}] Ambiguous texture matches for model {model_name}: {candidates:?}", code = .code.as_str())]
     TextureAmbiguous {
@@ -118,16 +112,10 @@ pub enum DomainError {
     },
 
     #[error("[{code}] Path traversal attempt detected: {path}", code = .code.as_str())]
-    PathTraversalDetected {
-        code: ErrorCode,
-        path: PathBuf,
-    },
+    PathTraversalDetected { code: ErrorCode, path: PathBuf },
 
     #[error("[{code}] Output target already exists: {path}", code = .code.as_str())]
-    OutputCollision {
-        code: ErrorCode,
-        path: PathBuf,
-    },
+    OutputCollision { code: ErrorCode, path: PathBuf },
 
     #[error("[{code}] Manifest validation failed for {manifest_path}: {reason}", code = .code.as_str())]
     ManifestInvalid {
@@ -137,10 +125,7 @@ pub enum DomainError {
     },
 
     #[error("[{code}] Source file integrity compromised for {path} (checksum mismatch)", code = .code.as_str())]
-    SourceIntegrityFailed {
-        code: ErrorCode,
-        path: PathBuf,
-    },
+    SourceIntegrityFailed { code: ErrorCode, path: PathBuf },
 
     #[error("[{code}] File {path} exceeds maximum configured size limit of {limit_bytes} bytes", code = .code.as_str())]
     MaxSizeExceeded {

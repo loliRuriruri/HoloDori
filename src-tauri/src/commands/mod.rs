@@ -2,20 +2,20 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use tauri::command;
 
-use crate::domain::types::{
-    BatchBuildReport, BuildStatus, ConflictPolicy, MatchedPair,
-};
+use crate::domain::types::{BatchBuildReport, BuildStatus, ConflictPolicy, MatchedPair};
 use crate::domain::{ConversionPipeline, PipelineConfig};
 
 #[command]
-pub async fn scan_inputs(
-    paths: Vec<String>,
-) -> Result<Vec<MatchedPair>, String> {
+pub async fn scan_inputs(paths: Vec<String>) -> Result<Vec<MatchedPair>, String> {
     let path_bufs: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).collect();
     let pipeline = ConversionPipeline::new(PipelineConfig::default());
 
-    let mut files = pipeline.scan_inputs(&path_bufs).map_err(|e| e.to_string())?;
-    pipeline.classify_candidates(&mut files).map_err(|e| e.to_string())?;
+    let mut files = pipeline
+        .scan_inputs(&path_bufs)
+        .map_err(|e| e.to_string())?;
+    pipeline
+        .classify_candidates(&mut files)
+        .map_err(|e| e.to_string())?;
     let (pairs, _hashes) = pipeline.match_pairs(&files).map_err(|e| e.to_string())?;
 
     Ok(pairs)
@@ -28,8 +28,10 @@ pub async fn build_models(
     conflict_policy: ConflictPolicy,
 ) -> Result<BatchBuildReport, String> {
     let out_path = PathBuf::from(&output_dir);
-    let mut config = PipelineConfig::default();
-    config.conflict_policy = conflict_policy;
+    let config = PipelineConfig {
+        conflict_policy,
+        ..Default::default()
+    };
     let pipeline = ConversionPipeline::new(config);
 
     // Collect source hashes for integrity validation

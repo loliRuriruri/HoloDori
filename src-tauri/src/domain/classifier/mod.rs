@@ -1,32 +1,30 @@
+use serde_json::Value;
 use std::fs::File;
 use std::io::BufReader;
-use serde_json::Value;
 
 use crate::domain::error::{DomainError, ErrorCode};
 use crate::domain::types::{FileClassification, ScannedFile};
 
 pub fn classify_file(scanned: &mut ScannedFile) -> Result<(), DomainError> {
-    match scanned.classification {
-        FileClassification::OtherJson => {
-            // Check if this JSON contains a `_bytes` key
-            let file = File::open(&scanned.path).map_err(|e| DomainError::IoError {
-                code: ErrorCode::ErrIo,
-                path: scanned.path.clone(),
-                message: e.to_string(),
-            })?;
+    if scanned.classification == FileClassification::OtherJson {
+        // Check if this JSON contains a `_bytes` key
+        let file = File::open(&scanned.path).map_err(|e| DomainError::IoError {
+            code: ErrorCode::ErrIo,
+            path: scanned.path.clone(),
+            message: e.to_string(),
+        })?;
 
-            let reader = BufReader::new(file);
-            let json_val: Value = serde_json::from_reader(reader).map_err(|e| DomainError::JsonSyntaxError {
+        let reader = BufReader::new(file);
+        let json_val: Value =
+            serde_json::from_reader(reader).map_err(|e| DomainError::JsonSyntaxError {
                 code: ErrorCode::ErrJsonSyntax,
                 path: scanned.path.clone(),
                 message: e.to_string(),
             })?;
 
-            if contains_bytes_candidate(&json_val) {
-                scanned.classification = FileClassification::ModelResourceJson;
-            }
+        if contains_bytes_candidate(&json_val) {
+            scanned.classification = FileClassification::ModelResourceJson;
         }
-        _ => {}
     }
     Ok(())
 }

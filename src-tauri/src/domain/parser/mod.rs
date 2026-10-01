@@ -1,6 +1,6 @@
+use regex::Regex;
 use std::collections::HashMap;
 use std::path::Path;
-use regex::Regex;
 
 use crate::domain::error::{DomainError, ErrorCode};
 use crate::domain::types::{MatchConfidence, ParsedIdentity};
@@ -17,7 +17,9 @@ impl Default for NamingRuleConfig {
         map.insert("002".to_string(), "cmmn".to_string());
         map.insert("003".to_string(), "uniq".to_string());
         // Note: Outfit "004" is intentionally NOT hard-coded per Section 6 instructions.
-        Self { outfit_to_style: map }
+        Self {
+            outfit_to_style: map,
+        }
     }
 }
 
@@ -78,7 +80,10 @@ impl IdentityParser {
         if let Some(caps) = self.regex_standard_delimited.captures(name) {
             let char_id = caps.name("char").unwrap().as_str().to_string();
             let outfit_id = caps.name("outfit").unwrap().as_str().to_string();
-            evidence.push(format!("Matched delimited pattern: char={}, outfit={}", char_id, outfit_id));
+            evidence.push(format!(
+                "Matched delimited pattern: char={}, outfit={}",
+                char_id, outfit_id
+            ));
 
             let explicit_style = caps.name("style").map(|s| s.as_str().to_lowercase());
             let mapped_style = self.config.outfit_to_style.get(&outfit_id).cloned();
@@ -86,23 +91,38 @@ impl IdentityParser {
             let (style_tag, confidence) = match (explicit_style, mapped_style) {
                 (Some(exp), Some(mapped)) => {
                     if exp == mapped {
-                        evidence.push(format!("Explicit style '{}' matches known mapping for outfit {}", exp, outfit_id));
+                        evidence.push(format!(
+                            "Explicit style '{}' matches known mapping for outfit {}",
+                            exp, outfit_id
+                        ));
                         (Some(exp), MatchConfidence::Exact)
                     } else {
-                        evidence.push(format!("Explicit style '{}' differs from default mapped style '{}'", exp, mapped));
+                        evidence.push(format!(
+                            "Explicit style '{}' differs from default mapped style '{}'",
+                            exp, mapped
+                        ));
                         (Some(exp), MatchConfidence::High)
                     }
                 }
                 (Some(exp), None) => {
-                    evidence.push(format!("Explicit style '{}' found; outfit {} has no default mapping", exp, outfit_id));
+                    evidence.push(format!(
+                        "Explicit style '{}' found; outfit {} has no default mapping",
+                        exp, outfit_id
+                    ));
                     (Some(exp), MatchConfidence::High)
                 }
                 (None, Some(mapped)) => {
-                    evidence.push(format!("Derived style '{}' from outfit ID {}", mapped, outfit_id));
+                    evidence.push(format!(
+                        "Derived style '{}' from outfit ID {}",
+                        mapped, outfit_id
+                    ));
                     (Some(mapped), MatchConfidence::High)
                 }
                 (None, None) => {
-                    evidence.push(format!("No style tag specified and no default rule for outfit ID {}", outfit_id));
+                    evidence.push(format!(
+                        "No style tag specified and no default rule for outfit ID {}",
+                        outfit_id
+                    ));
                     (None, MatchConfidence::High)
                 }
             };
@@ -121,7 +141,10 @@ impl IdentityParser {
         if let Some(caps) = self.regex_compact.captures(name) {
             let char_id = caps.name("char").unwrap().as_str().to_string();
             let outfit_id = caps.name("outfit").unwrap().as_str().to_string();
-            evidence.push(format!("Matched compact pattern: char={}, outfit={}", char_id, outfit_id));
+            evidence.push(format!(
+                "Matched compact pattern: char={}, outfit={}",
+                char_id, outfit_id
+            ));
 
             let explicit_style = caps.name("style").map(|s| s.as_str().to_lowercase());
             let mapped_style = self.config.outfit_to_style.get(&outfit_id).cloned();
@@ -154,7 +177,8 @@ impl IdentityParser {
         Err(DomainError::AmbiguousNaming {
             code: ErrorCode::ErrAmbiguousNaming,
             name: name.to_string(),
-            reason: "Does not contain standard 5-digit character ID and 3-digit outfit ID".to_string(),
+            reason: "Does not contain standard 5-digit character ID and 3-digit outfit ID"
+                .to_string(),
         })
     }
 }

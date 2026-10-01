@@ -1,7 +1,7 @@
+use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use sha2::{Digest, Sha256};
 use walkdir::WalkDir;
 
 use crate::domain::error::{DomainError, ErrorCode};
@@ -68,7 +68,11 @@ pub fn scan_paths<P: AsRef<Path>>(
         }
 
         if target_path.is_file() {
-            if let Some(scanned) = scan_single_file(target_path, target_path.parent().unwrap_or(target_path), options)? {
+            if let Some(scanned) = scan_single_file(
+                target_path,
+                target_path.parent().unwrap_or(target_path),
+                options,
+            )? {
                 results.push(scanned);
             }
         } else if target_path.is_dir() {
@@ -100,7 +104,8 @@ fn is_hidden(entry: &walkdir::DirEntry) -> bool {
     if entry.depth() == 0 {
         return false;
     }
-    entry.file_name()
+    entry
+        .file_name()
         .to_str()
         .map(|s| s.starts_with('.'))
         .unwrap_or(false)
@@ -111,7 +116,11 @@ fn scan_single_file(
     base_dir: &Path,
     options: &ScannerOptions,
 ) -> Result<Option<ScannedFile>, DomainError> {
-    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
     let classification = match ext.as_str() {
         "json" => FileClassification::OtherJson, // Will be refined by classifier
         "png" => FileClassification::TextureImage,
@@ -136,7 +145,11 @@ fn scan_single_file(
 
     let sha256 = compute_sha256(path)?;
     let relative_path = path.strip_prefix(base_dir).unwrap_or(path).to_path_buf();
-    let file_name = path.file_name().and_then(|f| f.to_str()).unwrap_or("").to_string();
+    let file_name = path
+        .file_name()
+        .and_then(|f| f.to_str())
+        .unwrap_or("")
+        .to_string();
 
     Ok(Some(ScannedFile {
         path: path.to_path_buf(),

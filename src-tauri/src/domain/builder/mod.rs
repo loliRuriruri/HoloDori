@@ -65,10 +65,12 @@ impl PackageBuilder {
         match pair.model_type {
             ModelSourceType::JsonBytes => {
                 let extracted = extract_and_stage_moc(&pair.model_source)?;
-                fs::copy(&extracted.temp_path, &staged_moc_path).map_err(|e| DomainError::IoError {
-                    code: ErrorCode::ErrIo,
-                    path: staged_moc_path.clone(),
-                    message: format!("Failed to copy staged MOC: {}", e),
+                fs::copy(&extracted.temp_path, &staged_moc_path).map_err(|e| {
+                    DomainError::IoError {
+                        code: ErrorCode::ErrIo,
+                        path: staged_moc_path.clone(),
+                        message: format!("Failed to copy staged MOC: {}", e),
+                    }
                 })?;
                 let _ = fs::remove_file(&extracted.temp_path);
             }
@@ -80,10 +82,12 @@ impl PackageBuilder {
                     message: format!("Failed to read raw MOC: {}", e),
                 })?;
                 validate_moc3_candidate(&bytes, &pair.model_source)?;
-                fs::copy(&pair.model_source, &staged_moc_path).map_err(|e| DomainError::IoError {
-                    code: ErrorCode::ErrIo,
-                    path: staged_moc_path.clone(),
-                    message: format!("Failed to copy raw MOC: {}", e),
+                fs::copy(&pair.model_source, &staged_moc_path).map_err(|e| {
+                    DomainError::IoError {
+                        code: ErrorCode::ErrIo,
+                        path: staged_moc_path.clone(),
+                        message: format!("Failed to copy raw MOC: {}", e),
+                    }
                 })?;
             }
         }

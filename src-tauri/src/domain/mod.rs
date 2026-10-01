@@ -1,15 +1,15 @@
 //! Pure domain logic for HoloDori Live2D Manager.
 //! Strictly decoupled from Tauri and GUI.
 
-pub mod error;
-pub mod types;
-pub mod scanner;
-pub mod classifier;
-pub mod extractor;
-pub mod parser;
-pub mod matcher;
-pub mod manifest;
 pub mod builder;
+pub mod classifier;
+pub mod error;
+pub mod extractor;
+pub mod manifest;
+pub mod matcher;
+pub mod parser;
+pub mod scanner;
+pub mod types;
 pub mod validator;
 
 use std::collections::HashMap;
@@ -22,26 +22,16 @@ use crate::domain::matcher::TextureMatcher;
 use crate::domain::parser::{IdentityParser, NamingRuleConfig};
 use crate::domain::scanner::{scan_paths, ScannerOptions};
 use crate::domain::types::{
-    BatchBuildReport, BuildStatus, ConflictPolicy, FileClassification, MatchConfidence, MatchedPair,
-    ModelBuildReport, ModelSourceType, ScannedFile, ValidationStageResult,
+    BatchBuildReport, BuildStatus, ConflictPolicy, FileClassification, MatchConfidence,
+    MatchedPair, ModelBuildReport, ModelSourceType, ScannedFile, ValidationStageResult,
 };
 use crate::domain::validator::PackageValidator;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct PipelineConfig {
     pub scanner_options: ScannerOptions,
     pub naming_rules: NamingRuleConfig,
     pub conflict_policy: ConflictPolicy,
-}
-
-impl Default for PipelineConfig {
-    fn default() -> Self {
-        Self {
-            scanner_options: ScannerOptions::default(),
-            naming_rules: NamingRuleConfig::default(),
-            conflict_policy: ConflictPolicy::default(),
-        }
-    }
 }
 
 pub struct ConversionPipeline {
@@ -135,7 +125,8 @@ impl ConversionPipeline {
                 validation_stages: vec![ValidationStageResult {
                     stage_name: "Texture Matching Guard".to_string(),
                     passed: false,
-                    message: "Ambiguous texture match: requires manual user disambiguation".to_string(),
+                    message: "Ambiguous texture match: requires manual user disambiguation"
+                        .to_string(),
                 }],
                 warnings: pair.warnings.clone(),
                 errors: vec!["Cannot build model with ambiguous texture association".to_string()],

@@ -2,11 +2,9 @@ use std::fs;
 use std::path::PathBuf;
 use tempfile::tempdir;
 
-use holodori_core::domain::builder::{PackageBuilder, sanitize_filename};
+use holodori_core::domain::builder::{sanitize_filename, PackageBuilder};
 use holodori_core::domain::error::ErrorCode;
-use holodori_core::domain::extractor::{
-    extract_and_stage_moc, extract_bytes,
-};
+use holodori_core::domain::extractor::{extract_and_stage_moc, extract_bytes};
 use holodori_core::domain::manifest::Model3Manifest;
 use holodori_core::domain::matcher::TextureMatcher;
 use holodori_core::domain::parser::{IdentityParser, NamingRuleConfig};
@@ -23,8 +21,7 @@ pub const SYNTHETIC_PNG_BYTES: &[u8] = &[
     0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1 width, height
     0x08, 0x06, 0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, // 8-bit RGBA
     0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44, 0x41, // IDAT chunk
-    0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00,
-    0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
+    0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00,
     0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, // IEND chunk
     0x42, 0x60, 0x82,
 ];
@@ -36,8 +33,8 @@ pub fn create_synthetic_moc3_bytes(version: u8) -> Vec<u8> {
     bytes[2] = b'C';
     bytes[3] = b'3';
     bytes[4] = version;
-    for i in 5..128 {
-        bytes[i] = (i % 256) as u8;
+    for (i, b) in bytes.iter_mut().enumerate().skip(5) {
+        *b = (i % 256) as u8;
     }
     bytes
 }
@@ -169,7 +166,8 @@ fn test_missing_texture() {
     let parser = IdentityParser::new(NamingRuleConfig::default());
     let identity = parser.parse_path(&model_path).unwrap();
 
-    let matched = TextureMatcher::match_model(&model_path, ModelSourceType::JsonBytes, &identity, &[]);
+    let matched =
+        TextureMatcher::match_model(&model_path, ModelSourceType::JsonBytes, &identity, &[]);
     assert_eq!(matched.match_confidence, MatchConfidence::NoMatch);
     assert!(matched.textures.is_empty());
 }
@@ -223,7 +221,9 @@ fn test_ambiguous_naming() {
     assert_eq!(res.confidence, MatchConfidence::Ambiguous);
 
     // Completely unparseable name
-    let err = parser.parse_name("random_unstructured_filename").unwrap_err();
+    let err = parser
+        .parse_name("random_unstructured_filename")
+        .unwrap_err();
     assert_eq!(err.code(), ErrorCode::ErrAmbiguousNaming);
 }
 
@@ -231,7 +231,8 @@ fn test_ambiguous_naming() {
 #[test]
 fn test_path_traversal_attempt() {
     let invalid_rel = "../outside.moc3";
-    let err = Model3Manifest::new_minimal(invalid_rel, &["textures/tex.png".to_string()]).unwrap_err();
+    let err =
+        Model3Manifest::new_minimal(invalid_rel, &["textures/tex.png".to_string()]).unwrap_err();
     assert_eq!(err.code(), ErrorCode::ErrPathTraversalDetected);
 
     let invalid_tex = "textures/../../evil.png";
@@ -275,7 +276,8 @@ fn test_existing_output_collision() {
     assert_eq!(err.code(), ErrorCode::ErrOutputCollision);
 
     // Policy UniqueSuffix should create 12345_001_1
-    let result = PackageBuilder::build_package(&pair, &out_root, ConflictPolicy::UniqueSuffix).unwrap();
+    let result =
+        PackageBuilder::build_package(&pair, &out_root, ConflictPolicy::UniqueSuffix).unwrap();
     assert!(result.package_dir.ends_with("12345_001_1"));
     assert!(result.moc_path.is_file());
 }
@@ -292,11 +294,9 @@ fn test_manifest_relative_path_validation() {
     assert_eq!(err.code(), ErrorCode::ErrPathTraversalDetected);
 
     // Valid relative paths
-    let manifest = Model3Manifest::new_minimal(
-        "12345_001.moc3",
-        &["textures/texture_00.png".to_string()],
-    )
-    .unwrap();
+    let manifest =
+        Model3Manifest::new_minimal("12345_001.moc3", &["textures/texture_00.png".to_string()])
+            .unwrap();
     assert_eq!(manifest.version, 3);
     assert_eq!(manifest.file_references.moc, "12345_001.moc3");
 }
@@ -306,7 +306,10 @@ fn test_manifest_relative_path_validation() {
 fn test_round_trip_json_validation() {
     let manifest = Model3Manifest::new_minimal(
         "character_001.moc3",
-        &["textures/texture_00.png".to_string(), "textures/texture_01.png".to_string()],
+        &[
+            "textures/texture_00.png".to_string(),
+            "textures/texture_01.png".to_string(),
+        ],
     )
     .unwrap();
 
@@ -324,7 +327,11 @@ fn test_golden_fixture_pipeline() {
     // Golden parameters: character = 12345, outfit = 001, style = nrml
     let model_json_path = input_dir.path().join("model_12345_001_nrml.json");
     let synthetic_moc = create_synthetic_moc3_bytes(3);
-    fs::write(&model_json_path, create_synthetic_model_json(&synthetic_moc)).unwrap();
+    fs::write(
+        &model_json_path,
+        create_synthetic_model_json(&synthetic_moc),
+    )
+    .unwrap();
 
     let texture_png_path = input_dir.path().join("texture_12345_001_nrml.png");
     fs::write(&texture_png_path, SYNTHETIC_PNG_BYTES).unwrap();
@@ -370,18 +377,28 @@ fn test_golden_fixture_pipeline() {
     let manifest = Model3Manifest::from_json_str(&manifest_content).unwrap();
     assert_eq!(manifest.version, 3);
     assert_eq!(manifest.file_references.moc, "12345_001.moc3");
-    assert_eq!(manifest.file_references.textures, vec!["textures/texture_00.png"]);
+    assert_eq!(
+        manifest.file_references.textures,
+        vec!["textures/texture_00.png"]
+    );
 
     // Verify 10-stage validation checklist: all 10 stages must PASS
     assert_eq!(report.validation_stages.len(), 10);
     for stage in &report.validation_stages {
-        assert!(stage.passed, "Stage '{}' failed: {}", stage.stage_name, stage.message);
+        assert!(
+            stage.passed,
+            "Stage '{}' failed: {}",
+            stage.stage_name, stage.message
+        );
     }
 
     // 17. Input source integrity test: Source files remain bit-for-bit unchanged
     let post_json_hash = compute_sha256(&model_json_path).unwrap();
     let post_png_hash = compute_sha256(&texture_png_path).unwrap();
-    assert_eq!(initial_json_hash, post_json_hash, "Source JSON was modified!");
+    assert_eq!(
+        initial_json_hash, post_json_hash,
+        "Source JSON was modified!"
+    );
     assert_eq!(initial_png_hash, post_png_hash, "Source PNG was modified!");
 }
 
@@ -401,17 +418,33 @@ fn test_reproducibility() {
 
     let pipeline = ConversionPipeline::new(PipelineConfig::default());
 
-    let report1 = pipeline.run_batch(&[input_dir.path().to_path_buf()], out_dir_1.path()).unwrap();
-    let report2 = pipeline.run_batch(&[input_dir.path().to_path_buf()], out_dir_2.path()).unwrap();
+    let report1 = pipeline
+        .run_batch(&[input_dir.path().to_path_buf()], out_dir_1.path())
+        .unwrap();
+    let report2 = pipeline
+        .run_batch(&[input_dir.path().to_path_buf()], out_dir_2.path())
+        .unwrap();
 
     assert_eq!(report1.overall_status, BuildStatus::Pass);
     assert_eq!(report2.overall_status, BuildStatus::Pass);
 
     let pkg1_moc = out_dir_1.path().join("12345_001").join("12345_001.moc3");
     let pkg2_moc = out_dir_2.path().join("12345_001").join("12345_001.moc3");
-    assert_eq!(compute_sha256(&pkg1_moc).unwrap(), compute_sha256(&pkg2_moc).unwrap());
+    assert_eq!(
+        compute_sha256(&pkg1_moc).unwrap(),
+        compute_sha256(&pkg2_moc).unwrap()
+    );
 
-    let pkg1_manifest = out_dir_1.path().join("12345_001").join("12345_001.model3.json");
-    let pkg2_manifest = out_dir_2.path().join("12345_001").join("12345_001.model3.json");
-    assert_eq!(fs::read_to_string(pkg1_manifest).unwrap(), fs::read_to_string(pkg2_manifest).unwrap());
+    let pkg1_manifest = out_dir_1
+        .path()
+        .join("12345_001")
+        .join("12345_001.model3.json");
+    let pkg2_manifest = out_dir_2
+        .path()
+        .join("12345_001")
+        .join("12345_001.model3.json");
+    assert_eq!(
+        fs::read_to_string(pkg1_manifest).unwrap(),
+        fs::read_to_string(pkg2_manifest).unwrap()
+    );
 }

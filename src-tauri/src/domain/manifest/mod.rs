@@ -26,7 +26,10 @@ pub struct Model3Manifest {
 }
 
 impl Model3Manifest {
-    pub fn new_minimal(moc_relative_path: &str, texture_relative_paths: &[String]) -> Result<Self, DomainError> {
+    pub fn new_minimal(
+        moc_relative_path: &str,
+        texture_relative_paths: &[String],
+    ) -> Result<Self, DomainError> {
         // Validate that no path is absolute or attempts path traversal
         Self::validate_relative_path(moc_relative_path)?;
         for tex in texture_relative_paths {
