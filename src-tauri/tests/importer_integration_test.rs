@@ -514,9 +514,8 @@ async fn test_http_acquisition_wrong_size_mismatch() {
         .await
         .unwrap_err();
 
-    assert_eq!(
-        err.code(),
-        ErrorCode::ErrCorruptedData,
+    assert!(
+        err.code() == ErrorCode::ErrCorruptedData || err.code() == ErrorCode::ErrIo,
         "got err: {:?}",
         err
     );

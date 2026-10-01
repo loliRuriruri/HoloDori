@@ -92,7 +92,7 @@ mod win32 {
         1 // continue
     }
 
-    pub fn discover_host_windows() -> Option<WallpaperHostInfo> {
+    fn discover_host_windows_internal() -> Option<WallpaperHostInfo> {
         let progman = find_progman()?;
         debug!("Discovered Progman HWND: 0x{:08X}", progman as usize);
 
@@ -181,6 +181,36 @@ mod win32 {
         } else {
             None
         }
+    }
+
+    pub fn discover_host_windows() -> Option<WallpaperHostInfo> {
+        if let Some(info) = discover_host_windows_internal() {
+            return Some(info);
+        }
+
+        // If not found on current thread's desktop, query from a fresh thread attached to "default" desktop
+        let handle = std::thread::spawn(|| {
+            extern "system" {
+                fn OpenDesktopW(
+                    lpszDesktop: *const u16,
+                    dwFlags: u32,
+                    fInherit: windows_sys::Win32::Foundation::BOOL,
+                    dwDesiredAccess: u32,
+                ) -> windows_sys::Win32::Foundation::HANDLE;
+                fn SetThreadDesktop(
+                    hDesktop: windows_sys::Win32::Foundation::HANDLE,
+                ) -> windows_sys::Win32::Foundation::BOOL;
+            }
+
+            let desk_name = to_wide("default");
+            let hdesk = unsafe { OpenDesktopW(desk_name.as_ptr(), 0, 0, 0x01FF) };
+            if !hdesk.is_null() {
+                let _ = unsafe { SetThreadDesktop(hdesk) };
+            }
+            discover_host_windows_internal()
+        });
+
+        handle.join().ok().flatten()
     }
 
     pub fn is_window_valid(hwnd: usize) -> bool {
