@@ -13,10 +13,12 @@ pub struct NamingRuleConfig {
 impl Default for NamingRuleConfig {
     fn default() -> Self {
         let mut map = HashMap::new();
+        // Empirically verified across real HoloDori samples (e.g. 00007, 00010):
         map.insert("001".to_string(), "nrml".to_string());
-        map.insert("002".to_string(), "cmmn".to_string());
-        map.insert("003".to_string(), "uniq".to_string());
-        // Note: Outfit "004" is intentionally NOT hard-coded per Section 6 instructions.
+        map.insert("002".to_string(), "uniq".to_string());
+        map.insert("003".to_string(), "cmmn".to_string());
+        // Note: Outfit "004" is observed as additional "uniq" in real assets (00010_004, 00012_004),
+        // kept flexible without permanent hardcoded restriction per Section 10.
         Self {
             outfit_to_style: map,
         }

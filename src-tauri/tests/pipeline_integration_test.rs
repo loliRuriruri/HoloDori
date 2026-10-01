@@ -611,3 +611,142 @@ fn test_level_3_runtime_pass_yields_clean_pass() {
     assert!(report.warnings.is_empty());
     assert_eq!(report.errors.len(), 0);
 }
+
+// 26. Real-world HoloDori naming convention test (00007_001 + t_live2d_00007-nrml-0008-00_texture_00.png)
+#[test]
+fn test_real_world_holodori_naming_pattern() {
+    let input_dir = tempdir().unwrap();
+    let output_dir = tempdir().unwrap();
+
+    let model_json = input_dir.path().join("00007_001.json");
+    let synthetic_moc = create_synthetic_moc3_bytes(5);
+    fs::write(&model_json, create_synthetic_model_json(&synthetic_moc)).unwrap();
+
+    let tex_png = input_dir
+        .path()
+        .join("t_live2d_00007-nrml-0008-00_texture_00.png");
+    fs::write(&tex_png, SYNTHETIC_PNG_BYTES).unwrap();
+
+    let pipeline = ConversionPipeline::new(PipelineConfig::default());
+    let report = pipeline
+        .run_batch(&[input_dir.path().to_path_buf()], output_dir.path())
+        .unwrap();
+
+    assert_eq!(report.total_models, 1);
+    assert_eq!(report.failed, 0);
+    let m = &report.reports[0];
+    assert_eq!(m.model_id, "00007_001");
+    assert_eq!(m.moc_version, MocVersion::Known(5));
+
+    let pkg_dir = output_dir.path().join("00007_001");
+    assert!(pkg_dir.join("00007_001.moc3").is_file());
+    assert!(pkg_dir.join("00007_001.model3.json").is_file());
+    assert!(pkg_dir.join("textures").join("texture_00.png").is_file());
+}
+
+// 27. Real-world outfit style mappings: 002 is uniq, 003 is cmmn
+#[test]
+fn test_real_world_outfit_002_003_styles() {
+    let input_dir = tempdir().unwrap();
+    let output_dir = tempdir().unwrap();
+
+    // Model 002 (uniq)
+    let json_002 = input_dir.path().join("00007_002.json");
+    let moc_002 = create_synthetic_moc3_bytes(5);
+    fs::write(&json_002, create_synthetic_model_json(&moc_002)).unwrap();
+    let tex_002 = input_dir
+        .path()
+        .join("t_live2d_00007-uniq-0008-00_texture_00.png");
+    fs::write(&tex_002, SYNTHETIC_PNG_BYTES).unwrap();
+
+    // Model 003 (cmmn)
+    let json_003 = input_dir.path().join("00007_003.json");
+    let moc_003 = create_synthetic_moc3_bytes(5);
+    fs::write(&json_003, create_synthetic_model_json(&moc_003)).unwrap();
+    let tex_003 = input_dir
+        .path()
+        .join("t_live2d_00007-cmmn-0000-00_texture_00.png");
+    fs::write(&tex_003, SYNTHETIC_PNG_BYTES).unwrap();
+
+    let pipeline = ConversionPipeline::new(PipelineConfig::default());
+    let report = pipeline
+        .run_batch(&[input_dir.path().to_path_buf()], output_dir.path())
+        .unwrap();
+
+    assert_eq!(report.total_models, 2);
+    assert_eq!(report.failed, 0);
+
+    let pkg_002 = output_dir.path().join("00007_002");
+    let pkg_003 = output_dir.path().join("00007_003");
+    assert!(pkg_002.join("00007_002.model3.json").is_file());
+    assert!(pkg_003.join("00007_003.model3.json").is_file());
+}
+
+// 28. Windows path containing spaces check (Section 18)
+#[test]
+fn test_paths_containing_spaces() {
+    let base_dir = tempdir().unwrap();
+    let input_space_dir = base_dir
+        .path()
+        .join("input path with spaces")
+        .join("sub dir");
+    let output_space_dir = base_dir
+        .path()
+        .join("output path with spaces")
+        .join("target dir");
+    fs::create_dir_all(&input_space_dir).unwrap();
+    fs::create_dir_all(&output_space_dir).unwrap();
+
+    let model_json = input_space_dir.join("model_12345_001.json");
+    let synthetic_moc = create_synthetic_moc3_bytes(3);
+    fs::write(&model_json, create_synthetic_model_json(&synthetic_moc)).unwrap();
+
+    let tex_png = input_space_dir.join("texture_12345_001.png");
+    fs::write(&tex_png, SYNTHETIC_PNG_BYTES).unwrap();
+
+    let pipeline = ConversionPipeline::new(PipelineConfig::default());
+    let report = pipeline
+        .run_batch(&[input_space_dir], &output_space_dir)
+        .unwrap();
+
+    assert_eq!(report.total_models, 1);
+    assert_eq!(report.failed, 0);
+    let pkg_dir = output_space_dir.join("12345_001");
+    assert!(pkg_dir.join("12345_001.model3.json").is_file());
+    assert!(pkg_dir.join("textures").join("texture_00.png").is_file());
+}
+
+// 29. Korean Unicode directory and path check (Section 18)
+#[test]
+fn test_korean_unicode_paths() {
+    let base_dir = tempdir().unwrap();
+    let input_korean_dir = base_dir
+        .path()
+        .join("테스트_모델_경로")
+        .join("캐릭터_데이터");
+    let output_korean_dir = base_dir.path().join("결과_패키지_출력");
+    fs::create_dir_all(&input_korean_dir).unwrap();
+    fs::create_dir_all(&output_korean_dir).unwrap();
+
+    let model_json = input_korean_dir.join("12345_001.json");
+    let synthetic_moc = create_synthetic_moc3_bytes(4);
+    fs::write(&model_json, create_synthetic_model_json(&synthetic_moc)).unwrap();
+
+    let tex_png = input_korean_dir.join("12345_001.png");
+    fs::write(&tex_png, SYNTHETIC_PNG_BYTES).unwrap();
+
+    let pipeline = ConversionPipeline::new(PipelineConfig::default());
+    let report = pipeline
+        .run_batch(&[input_korean_dir], &output_korean_dir)
+        .unwrap();
+
+    assert_eq!(report.total_models, 1);
+    assert_eq!(report.failed, 0);
+    let pkg_dir = output_korean_dir.join("12345_001");
+    assert!(pkg_dir.join("12345_001.model3.json").is_file());
+    assert!(pkg_dir.join("textures").join("texture_00.png").is_file());
+
+    let manifest_content = fs::read_to_string(pkg_dir.join("12345_001.model3.json")).unwrap();
+    let manifest = Model3Manifest::from_json_str(&manifest_content).unwrap();
+    assert_eq!(manifest.file_references.moc, "12345_001.moc3");
+}

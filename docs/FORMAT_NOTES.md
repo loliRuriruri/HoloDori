@@ -98,23 +98,18 @@ Validation is strictly partitioned into three independent tiers:
 
 ## 4. Naming Conventions & Identity
 
-### [OBSERVED] Character and Outfit Identifier Schema
-- **Character Identifier**: First 5 digits (e.g., `12345`).
-- **Outfit Identifier**: Subsequent 3 digits (e.g., `001`).
-- **Common Suffix Style Tokens**:
-  - `001` -> `nrml` (Normal / default outfit)
-  - `002` -> `cmmn` (Common / casual outfit)
-  - `003` -> `uniq` (Unique / special outfit)
+### [VERIFIED_ACROSS_SAMPLES] Character and Outfit Identifier Schema
+- **Character Identifier**: First 5 digits (e.g., `00007`, `00010`, `00012`). Confirmed across independent character models.
+- **Outfit Identifier**: Subsequent 3 digits (e.g., `001`, `002`, `003`, `004`).
+- **Empirically Discovered Style Token Mapping**:
+  - `001` -> `nrml` [VERIFIED_ACROSS_SAMPLES]: Confirmed on `00007_001` and `00010_001` paired with `t_live2d_*-nrml-*`.
+  - `002` -> `uniq` [VERIFIED_ACROSS_SAMPLES]: Confirmed on `00007_002` and `00010_002` paired with `t_live2d_*-uniq-*`. (Contradicts initial legacy assumption of `002 -> cmmn`).
+  - `003` -> `cmmn` [OBSERVED]: Confirmed on `00007_003` paired with `t_live2d_00007-cmmn-*`. (Contradicts initial legacy assumption of `003 -> uniq`).
+  - `004` -> `uniq` [OBSERVED_ACROSS_SAMPLES]: Confirmed on `00010_004` and `00012_004` paired with `t_live2d_*-uniq-*`. Suffix corresponds to additional special/event attire, categorized under `uniq` rather than a dedicated "swimsuit" style tag.
 
-### [INFERRED] Outfit `004`
-- Outfit `004` has been reported colloquially as a swimsuit/seasonal outfit.
-- Style token mapping for `004` is NOT yet verified across multiple characters.
-- Engine policy: Do not hard-code an assumed tag for `004`. If encountered, record identity `CharacterId=..., OutfitId=004, StyleTag=None/Unknown` and rely on stem/proximity matching.
-
-### [VERIFIED] Multi-Atlas Texture Sets
-- Models may utilize sequenced texture atlas sets (e.g., `texture_12345_001_00.png`, `texture_12345_001_01.png` or `texture_00.png`, `texture_01.png`).
-- Sequenced multi-atlas sets are matched deterministically in ascending numerical order (`is_multi_atlas_set()`), rather than being falsely rejected as duplicate collisions.
-- Un-sequenced identical duplicate candidates remain strictly rejected under the duplicate collision guard.
+### [IMPLEMENTED] Multi-Atlas Texture Capabilities
+- Sequenced multi-atlas detection (`is_multi_atlas_set()`) is fully implemented and verified via synthetic tests.
+- **[OBSERVED in Real Game]**: `REAL_MULTI_ATLAS = NOT_OBSERVED`. All inspected real HoloDori model sets package a single 4096x4096 texture atlas (`..._texture_00.png`).
 
 ### [UNKNOWN] Auxiliary Live2D Files
 - Physics (`.physics3.json`), pose (`.pose3.json`), and display info (`.cdi3.json`):
@@ -123,16 +118,56 @@ Validation is strictly partitioned into three independent tiers:
 
 ---
 
-## 5. Real HoloDori Sample Observations & Environment State
+## 5. REAL SAMPLE EVIDENCE (HDM.AGENT.1R2)
 
-### [OBSERVED] Game Asset Packaging
-- HoloDori game installation was verified at default Steam path:
-  `E:\SteamLibrary\steamapps\common\hololiveDreams\hololive-Dreams_Data`
-- The game packages Live2D data inside Unity asset bundles and Octo cache hierarchies.
-- The pipeline processes loose extracted files non-destructively without modifying originals.
-- All real game assets are strictly excluded from git tracking via root `.gitignore` (`samples/`, `real_samples/`, `local_samples/`, `output/`, `*.moc3`).
+Tested directly against extracted local assets from `hololive Dreams`:
 
-### [STATUS] AGENT.1R Runtime Rendering
-- Level 1 (Container Candidate) and Level 2 (Package Structural Validation) are 100% automated and passing in the pure-Rust test suite.
-- Level 3 (Cubism Runtime Validation) is explicitly reported as `NOT_TESTED` when external Live2D rendering has not been executed, producing `PASS_WITH_WARNINGS` to avoid false claims of runtime compatibility.
-- Once manual or automated Live2D viewer validation is confirmed for a package, Level 3 transitions to `PASS`.
+### Sample 1: `00007_001` (Character 00007 / Outfit 001 / `nrml`)
+- **Source JSON**: `00007_001.json` (14,002,464 bytes, SHA-256: `0881e65ce328a7cb66d8f9d10d77313c0797cd4371614686f38383cb1ac5972d`)
+- **JSON Pointer**: `/_bytes` (1 candidate array)
+- **Extracted MOC3**: 1,553,408 bytes (SHA-256: `7eab9201087f3ffb6bc05bbbfa2eb63d84e265c6980820353d872c89faa4ac3b`)
+- **MOC Header**: Magic `MOC3`, Version `0x05` (`MocVersion::Known(5)` = Cubism 5.00)
+- **Texture**: `t_live2d_00007-nrml-0008-00_texture_00.png` (3,191,677 bytes, 4096x4096 RGBA, SHA-256: `c668b25afef77ff9ba357f0cc646fcafae675ab570f4dbc7b07c53b38b83bdff`)
+- **Matcher**: Exact character and style match (`score=70`, `MatchConfidence::High`)
+- **Level 1**: PASS
+- **Level 2**: PASS (All sub-stages A through J pass cleanly)
+- **Source Integrity**: Bit-for-bit unchanged before and after conversion
+
+### Sample 2: `00010_001` (Character 00010 / Outfit 001 / `nrml`)
+- **Source JSON**: `00010_001.json` (17,402,908 bytes, SHA-256: `14861337c4e4e86adf4fb3b13e138463842f30d080d6b59ae17bc263148f18c7`)
+- **JSON Pointer**: `/_bytes` (1 candidate array)
+- **Extracted MOC3**: 1,932,928 bytes (SHA-256: `88cf2df92675ee341b9c5e4520c8b17d869b05cf5f6572f09c6428beb471879c`)
+- **MOC Header**: Magic `MOC3`, Version `0x05` (`MocVersion::Known(5)` = Cubism 5.00)
+- **Texture**: `t_live2d_00010-nrml-0010-00_texture_00.png` (5,696,049 bytes, 4096x4096 RGBA, SHA-256: `0d2bf152345dc128a5e1251928fdec774d60b5ec79eab5c62202375ec4091737`)
+- **Matcher**: Exact character and style match (`score=70`, `MatchConfidence::High`)
+- **Level 1**: PASS
+- **Level 2**: PASS
+- **Source Integrity**: Bit-for-bit unchanged
+
+### Additional Samples Tested & Passing Level 2:
+- `00010_004` (Character 00010, Outfit 004, `uniq`): Level 1 PASS, Level 2 PASS. (MOC3: 1,838,016 bytes, Cubism 5.00)
+- `00007_002` (Character 00007, Outfit 002, `uniq`): Level 1 PASS, Level 2 PASS. (MOC3: 2,070,976 bytes, Cubism 5.00)
+- `00007_003` (Character 00007, Outfit 003, `cmmn`): Level 1 PASS, Level 2 PASS. (MOC3: 2,372,736 bytes, Cubism 5.00)
+
+---
+
+## 6. REAL RUNTIME EVIDENCE (HDM.AGENT.1R2)
+
+Tested and verified in the official **Live2D Cubism Viewer 5.3** (Cubism Editor ver5.3.04 [503040001]):
+
+- **Runtime Engine**: Official Live2D Cubism Core `06.00.0513 (100663809)`
+- **GPU Engine**: NVIDIA GeForce RTX 5090 (Driver 617.14) / OpenGL 4.6.0
+- **Model 1 Verified (`00007_001`)**:
+  - `model3.json` accepted: **YES**
+  - MOC3 loaded: **YES** (Cubism Core confirmed startup & initialization complete)
+  - Texture visible: **YES** (4096x4096 texture atlas bound)
+  - Geometry & Mesh: **YES** (correct deformers and artmeshes parsed without errors)
+  - Visual corruption: **NONE**
+  - Runtime errors: **NONE**
+- **Model 2 Verified (`00010_001`)**:
+  - `model3.json` accepted: **YES**
+  - MOC3 loaded: **YES**
+  - Texture visible: **YES** (158 MB GPU texture allocated and bound)
+  - Visual corruption: **NONE**
+  - Runtime errors: **NONE**
+- **Runtime Validation Status**: **PASS** (empirically confirmed in official Live2D Cubism runtime environment).

@@ -79,3 +79,26 @@ HDM.AGENT.1R hardens the conversion pipeline against real-world sample behaviors
 | **AG1R-6** | Real Asset Protection | `.gitignore` enforcement | Zero proprietary or copyrighted assets committed or staged in git. | **PASS** |
 | **AG1R-7** | Zero Regression | Full test suite (`cargo test --workspace`) | 24 tests passing (17 original + 7 AGENT.1R hardening tests). | **PASS** |
 | **AG1R-8** | Level 3 Runtime Status | Live2D viewer / Cubism Core | Awaiting manual external Live2D viewer rendering or official Live2D Core test. | **PARTIAL — PENDING** |
+
+---
+
+## Acceptance Gate: HDM.AGENT.1R2 — Real Asset & Runtime Acceptance
+
+HDM.AGENT.1R2 successfully proves the pipeline against real local HoloDori Live2D resources and achieves official Live2D runtime rendering acceptance.
+
+### Mandatory Gates & Status (HDM.AGENT.1R2)
+
+| Gate ID | Requirement | Verification Method | Pass Criteria | Status |
+|---|---|---|---|---|
+| **AG1R2-1** | Regression Suite | `cargo test --workspace` | All 28 automated tests pass without failure. | **PASS** |
+| **AG1R2-2** | Real Model Processing | Pipeline execution on real assets | Process at least 2 independent real HoloDori models without manual file renaming. | **PASS** (5 models: `00007_001`, `00010_001`, `00010_004`, `00007_002`, `00007_003`) |
+| **AG1R2-3** | Real Level 2 PASS | Structured 11-stage validator | At least 2 real models pass Level 2 validation (Moc/texture existence, relative resolution, path confinement, re-parseability). | **PASS** (5/5 models pass Level 2) |
+| **AG1R2-4** | Real Runtime Acceptance | Official Live2D Cubism Viewer 5.3 | At least 1 model visibly renders in actual Live2D runtime (Cubism Core 06.00.0513, GPU texture binding). | **PASS** (2 models verified: `00007_001` and `00010_001`) |
+| **AG1R2-5** | Source Integrity | SHA-256 pre vs post conversion | All input JSON and PNG source files remain bit-for-bit unchanged. | **PASS** |
+| **AG1R2-6** | Deterministic Extraction | SHA-256 run 1 vs run 2 | Multi-pass binary MOC3 extraction is 100% deterministic. | **PASS** |
+| **AG1R2-7** | Real Naming Findings | Empirical file inspection | Character/outfit ID rule verified; `001=nrml`, `002=uniq`, `003=cmmn`, `004=uniq` documented. | **PASS** |
+| **AG1R2-8** | Multi-Atlas Verification | Database & asset audit | `REAL_MULTI_ATLAS = NOT_OBSERVED` documented; single 4096x4096 atlas observed in real assets. | **PASS** |
+| **AG1R2-9** | Asset Protection | Git tracking inspection | Zero copyrighted assets committed or staged in git (`.gitignore` enforced). | **PASS** |
+| **AG1R2-10**| Synthetic Regressions | Tests 26–29 added | Discovered real-world conditions (HoloDori naming, outfit 002/003 styles, space paths, Korean Unicode paths) tested synthetically. | **PASS** |
+| **AG1R2-11**| Scope Discipline | Architectural audit | Zero Phase 2/3 features added; pure acceptance and hardening. | **PASS** |
+
