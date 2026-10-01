@@ -243,8 +243,11 @@ where
         while let Ok((mut socket, _)) = listener.accept().await {
             let handler = handler.clone();
             tokio::spawn(async move {
-                let mut buf = [0u8; 2048];
+                let mut buf = [0u8; 4096];
                 if let Ok(n) = socket.read(&mut buf).await {
+                    if n == 0 {
+                        return;
+                    }
                     let req = String::from_utf8_lossy(&buf[..n]).to_string();
                     let (status, headers, body) = handler(req);
                     let reason = match status {
@@ -262,8 +265,8 @@ where
                     let _ = socket.write_all(&body).await;
                     let _ = socket.flush().await;
                     let _ = socket.shutdown().await;
-                    let mut drain = [0u8; 256];
-                    let _ = tokio::time::timeout(std::time::Duration::from_millis(200), async {
+                    let mut drain = [0u8; 128];
+                    let _ = tokio::time::timeout(std::time::Duration::from_secs(1), async {
                         while let Ok(n) = socket.read(&mut drain).await {
                             if n == 0 {
                                 break;
@@ -598,7 +601,13 @@ async fn test_http_acquisition_cache_hit_and_miss_and_invalidation() {
 
     let dir = tempdir().unwrap();
     let cache = ImporterCacheManager::with_root(dir.path().join("cache"));
-    let acq = AssetAcquisition::with_cdn_template(format!("{base_url}/{{objectName}}"));
+    let acq = AssetAcquisition::with_cdn_template(format!("{base_url}/{{objectName}}"))
+        .with_client(
+            reqwest::Client::builder()
+                .pool_max_idle_per_host(0)
+                .build()
+                .unwrap(),
+        );
     let cancel = Arc::new(AtomicBool::new(false));
 
     // 1. Cache Miss -> triggers download from server

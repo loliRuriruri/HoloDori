@@ -30,6 +30,7 @@ impl AssetAcquisition {
             cdn_template: DEFAULT_CDN_URL_TEMPLATE.to_string(),
             client: reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(60))
+                .pool_max_idle_per_host(0)
                 .build()
                 .unwrap_or_default(),
         }
@@ -40,6 +41,7 @@ impl AssetAcquisition {
             cdn_template: template.into(),
             client: reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(60))
+                .pool_max_idle_per_host(0)
                 .build()
                 .unwrap_or_default(),
         }
