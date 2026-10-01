@@ -238,8 +238,10 @@ where
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let handler = Arc::new(handler);
+    let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
 
     let handle = tokio::spawn(async move {
+        let _ = ready_tx.send(());
         while let Ok((mut socket, _)) = listener.accept().await {
             let handler = handler.clone();
             tokio::spawn(async move {
@@ -279,6 +281,7 @@ where
         }
     });
 
+    let _ = ready_rx.await;
     (format!("http://127.0.0.1:{port}"), handle)
 }
 
@@ -433,7 +436,12 @@ async fn test_http_acquisition_wrong_content_length() {
         .await
         .unwrap_err();
 
-    assert_eq!(err.code(), ErrorCode::ErrCorruptedData);
+    assert_eq!(
+        err.code(),
+        ErrorCode::ErrCorruptedData,
+        "got err: {:?}",
+        err
+    );
     assert!(!cache.get_bundle_path("obj_cl_mismatch").exists());
 }
 
@@ -506,7 +514,12 @@ async fn test_http_acquisition_wrong_size_mismatch() {
         .await
         .unwrap_err();
 
-    assert_eq!(err.code(), ErrorCode::ErrCorruptedData);
+    assert_eq!(
+        err.code(),
+        ErrorCode::ErrCorruptedData,
+        "got err: {:?}",
+        err
+    );
     assert!(!cache.get_bundle_path("obj_size_mismatch").exists());
     assert!(!cache
         .get_bundle_path("obj_size_mismatch")
@@ -543,7 +556,12 @@ async fn test_http_acquisition_wrong_md5() {
         .await
         .unwrap_err();
 
-    assert_eq!(err.code(), ErrorCode::ErrCorruptedData);
+    assert_eq!(
+        err.code(),
+        ErrorCode::ErrCorruptedData,
+        "got err: {:?}",
+        err
+    );
     assert!(!cache.get_bundle_path("obj_md5_mismatch").exists());
     assert!(!cache
         .get_bundle_path("obj_md5_mismatch")
