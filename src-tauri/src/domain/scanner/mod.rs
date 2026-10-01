@@ -97,6 +97,9 @@ pub fn scan_paths<P: AsRef<Path>>(
 }
 
 fn is_hidden(entry: &walkdir::DirEntry) -> bool {
+    if entry.depth() == 0 {
+        return false;
+    }
     entry.file_name()
         .to_str()
         .map(|s| s.starts_with('.'))
