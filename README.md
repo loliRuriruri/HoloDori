@@ -11,8 +11,9 @@
 
 [![CI](https://github.com/loliRuriruri/HoloDori/actions/workflows/ci.yml/badge.svg)](https://github.com/loliRuriruri/HoloDori/actions)
 [![Platform: Windows 10 / 11](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-blue.svg)](https://microsoft.com/windows)
+[![Version: 1.0.0](https://img.shields.io/badge/version-1.0.0-blue.svg)](release/VERSION.txt)
 [![Tauri: v2](https://img.shields.io/badge/tauri-v2-orange.svg)](https://v2.tauri.app)
-[![Tests: 115 passing](https://img.shields.io/badge/tests-115%20passing-brightgreen.svg)](docs/ACCEPTANCE.md)
+[![Tests: 121 passing](https://img.shields.io/badge/tests-121%20passing-brightgreen.svg)](docs/ACCEPTANCE.md)
 
 ---
 
@@ -87,6 +88,13 @@ Once packaged, models can be previewed in the embedded WebGL viewer, pinned to y
 - **Desktop Icon Invariant**: Desktop icons, shortcuts, selection rectangles, and mouse clicks remain 100% responsive (`SHELLDLL_DefView` is never modified or hidden).
 - **Infallible Fallback**: Automatically falls back to Desktop Character Overlay if Explorer internals change or reparenting fails.
 - **Host Recovery Watchdog**: Automatically polls host HWND validity and recovers seamlessly if `explorer.exe` restarts.
+
+### 7. Korean Localization & Help System (v1.0.0)
+- **Primary Language: 한국어 (Korean)**: Complete natural Korean localization with full English fallback.
+- **Interactive Tooltip System**: Rich tooltips across all buttons and controls explaining functionality, keyboard shortcuts, and safety behaviors.
+- **Built-in Offline User Manual**: 12 structured topics covering everything from initial setup to advanced Win32 WorkerW mechanics, accessible offline at any time.
+- **Interactive First-Run Guide**: 6-step visual onboarding walkthrough for first-time users.
+- **Normal vs. Advanced Mode**: Simplified intuitive layout for general users with toggleable Advanced Mode for technical diagnostics and MOC3 validation reports.
 
 ---
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useI18n } from '../i18n';
 import { ViewerCanvas } from '../viewer/ViewerCanvas';
 import { ViewerRenderer } from '../viewer/cubism/renderer';
 import { Live2DModelWrapper } from '../viewer/cubism/model';
@@ -39,6 +40,7 @@ const isTauriEnv = (): boolean =>
   !!(window as unknown as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
 
 export const DesktopCharacterWindow: React.FC = () => {
+  const { t } = useI18n();
   // Query parameters from initial window spawn
   const params = new URLSearchParams(window.location.search);
   const initialChar = params.get('char') || '00007';
@@ -868,7 +870,7 @@ export const DesktopCharacterWindow: React.FC = () => {
             }}
             style={contextMenuItemStyle}
           >
-            🔓 Edit Mode (Ctrl+Shift+D)
+            🔓 {t('desktop.menu_edit')} (Ctrl+Shift+D)
           </button>
           <button
             onClick={() => {
@@ -877,10 +879,10 @@ export const DesktopCharacterWindow: React.FC = () => {
             }}
             style={contextMenuItemStyle}
           >
-            🎲 Play Random Motion
+            🎲 {t('desktop.menu_random_motion')}
           </button>
           <button onClick={togglePause} style={contextMenuItemStyle}>
-            {isPaused ? '▶️ Resume Animation' : '⏸️ Pause Animation'}
+            {isPaused ? `▶️ ${t('desktop.resume')}` : `⏸️ ${t('desktop.pause')}`}
           </button>
           <button
             onClick={() => {
@@ -889,7 +891,7 @@ export const DesktopCharacterWindow: React.FC = () => {
             }}
             style={contextMenuItemStyle}
           >
-            {alwaysOnTop ? '📌 Disable Always On Top' : '📌 Enable Always On Top'}
+            {alwaysOnTop ? `📌 ${t('desktop.always_on_top')}: ON` : `📌 ${t('desktop.always_on_top')}: OFF`}
           </button>
           <button
             onClick={() => {
@@ -898,7 +900,7 @@ export const DesktopCharacterWindow: React.FC = () => {
             }}
             style={contextMenuItemStyle}
           >
-            🖱️ Enable Click-Through
+            🖱️ {t('desktop.menu_click_through')}
           </button>
           <div style={{ height: '1px', background: '#334155', margin: '4px 0' }} />
           <button
@@ -914,8 +916,8 @@ export const DesktopCharacterWindow: React.FC = () => {
             style={contextMenuItemStyle}
           >
             {wallpaperStatus?.is_wallpaper_active
-              ? '🪟 Switch to Overlay Mode'
-              : '🖼️ Switch to True Wallpaper'}
+              ? `🪟 ${t('wallpaper.disable')}`
+              : `🖼️ ${t('wallpaper.enable')}`}
           </button>
           <button
             onClick={() => {
@@ -926,7 +928,7 @@ export const DesktopCharacterWindow: React.FC = () => {
             }}
             style={contextMenuItemStyle}
           >
-            🔄 Recover Wallpaper Host
+            🔄 {t('wallpaper.recover')}
           </button>
           <div style={{ height: '1px', background: '#334155', margin: '4px 0' }} />
           <button
@@ -937,7 +939,7 @@ export const DesktopCharacterWindow: React.FC = () => {
             }}
             style={{ ...contextMenuItemStyle, color: '#f87171' }}
           >
-            ✕ Close Character
+            ✕ {t('desktop.menu_close')}
           </button>
         </div>
       )}

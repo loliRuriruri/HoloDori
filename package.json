@@ -1,15 +1,15 @@
 {
   "name": "holodori-live2d-manager",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test:unit": "node --test tests/viewer_unit.test.mjs",
+    "test:unit": "node --test tests/viewer_unit.test.mjs tests/i18n.test.mjs",
     "test:runtime": "node scripts/test_viewer_runtime.mjs",
-    "test": "node --test tests/viewer_unit.test.mjs && node scripts/test_viewer_runtime.mjs",
+    "test": "node --test tests/viewer_unit.test.mjs tests/i18n.test.mjs",
     "tauri": "tauri"
   },
   "dependencies": {

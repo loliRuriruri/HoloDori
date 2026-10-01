@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { useI18n } from '../i18n';
+import { Tooltip } from './Tooltip';
 import {
   SteamDetectionResult,
   ModelCatalogEntry,
@@ -34,6 +36,8 @@ export const ImporterView: React.FC<ImporterViewProps> = ({
   onNavigateToLibrary,
   onOpenViewer,
 }) => {
+  const { t } = useI18n();
+
   // Steam & Cache state
   const [detection, setDetection] = useState<SteamDetectionResult | null>(null);
   const [isDetecting, setIsDetecting] = useState<boolean>(false);
@@ -321,7 +325,7 @@ export const ImporterView: React.FC<ImporterViewProps> = ({
           <div className="card-header-row">
             <div className="header-title">
               <span className="icon">{detection?.found ? '🎮' : '🔍'}</span>
-              <span className="title-text">HoloDori Game Installation</span>
+              <span className="title-text">{t('importer.title')}</span>
             </div>
             <div className="detection-badges">
               {detection?.found ? (
@@ -351,20 +355,24 @@ export const ImporterView: React.FC<ImporterViewProps> = ({
           </div>
 
           <div className="card-actions">
-            <button
-              className="btn-secondary btn-small"
-              onClick={runDetection}
-              disabled={isDetecting || isImporting}
-            >
-              {isDetecting ? 'Detecting...' : '🔄 Re-Detect Steam'}
-            </button>
-            <button
-              className="btn-secondary btn-small"
-              onClick={handlePickManualFolder}
-              disabled={isDetecting || isImporting}
-            >
-              📁 Browse Game Folder...
-            </button>
+            <Tooltip title={t('importer.steam_detect_btn')} body="Steam 라이브러리 목록을 다시 스캔하여 HoloDori 게임 설치 위치를 탐색합니다.">
+              <button
+                className="btn-secondary btn-small"
+                onClick={runDetection}
+                disabled={isDetecting || isImporting}
+              >
+                {isDetecting ? t('importer.steam_detecting') : t('importer.steam_detect_btn')}
+              </button>
+            </Tooltip>
+            <Tooltip title={t('importer.choose_game_dir')} body="HoloDori 설치 폴더나 StreamingAssets가 있는 디렉터리를 직접 지정합니다.">
+              <button
+                className="btn-secondary btn-small"
+                onClick={handlePickManualFolder}
+                disabled={isDetecting || isImporting}
+              >
+                {t('importer.choose_game_dir')}
+              </button>
+            </Tooltip>
           </div>
         </div>
 
@@ -373,7 +381,7 @@ export const ImporterView: React.FC<ImporterViewProps> = ({
           <div className="card-header-row">
             <div className="header-title">
               <span className="icon">💾</span>
-              <span className="title-text">Bundle Cache</span>
+              <span className="title-text">{t('importer.cache_status')}</span>
             </div>
             <span className="badge badge-info">
               {cacheStats ? `${cacheStats.cached_bundles_count} Cached` : '0 Cached'}
@@ -396,25 +404,27 @@ export const ImporterView: React.FC<ImporterViewProps> = ({
           </div>
 
           <div className="card-actions">
-            <button
-              className="btn-secondary btn-small"
-              onClick={() => {
-                if (cacheStats?.cache_directory) {
-                  openPath(cacheStats.cache_directory).catch((e) => console.warn(e));
-                }
-              }}
-              title="Open bundle cache folder on disk"
-            >
-              📂 Open Cache
-            </button>
-            <button
-              className="btn-danger-outline btn-small"
-              onClick={handleClearCache}
-              disabled={!cacheStats || cacheStats.cached_bundles_count === 0 || isImporting}
-              title="Delete all cached raw bundles to free disk space"
-            >
-              🗑️ Clear Cache
-            </button>
+            <Tooltip title="캐시 폴더 열기" body="다운로드 및 추출된 원본 에셋 번들이 저장된 로컬 캐시 폴더를 파일 탐색기로 엽니다.">
+              <button
+                className="btn-secondary btn-small"
+                onClick={() => {
+                  if (cacheStats?.cache_directory) {
+                    openPath(cacheStats.cache_directory).catch((e) => console.warn(e));
+                  }
+                }}
+              >
+                📂 Open Cache
+              </button>
+            </Tooltip>
+            <Tooltip title={t('importer.cache_clear_btn')} body={t('confirm.clear_cache_desc')}>
+              <button
+                className="btn-danger-outline btn-small"
+                onClick={handleClearCache}
+                disabled={!cacheStats || cacheStats.cached_bundles_count === 0 || isImporting}
+              >
+                🗑️ {t('importer.cache_clear_btn')}
+              </button>
+            </Tooltip>
           </div>
         </div>
       </div>
@@ -744,7 +754,7 @@ export const ImporterView: React.FC<ImporterViewProps> = ({
                   if (outputDir) openPath(outputDir).catch((e) => console.warn(e));
                 }}
               >
-                📂 Open Output Folder
+                📂 {t('about.btn_open_output')}
               </button>
               <button
                 className="btn-primary"
@@ -753,10 +763,10 @@ export const ImporterView: React.FC<ImporterViewProps> = ({
                   onNavigateToLibrary(outputDir);
                 }}
               >
-                📚 View in Library & Rescan
+                📚 {t('importer.go_to_library')}
               </button>
               <button className="btn-secondary" onClick={() => setShowResultModal(false)}>
-                Dismiss
+                {t('btn.close')}
               </button>
             </div>
           </div>
@@ -767,7 +777,7 @@ export const ImporterView: React.FC<ImporterViewProps> = ({
       <footer className="importer-footer">
         <div className="footer-left">
           <div className="output-config">
-            <span className="output-label">Output Directory:</span>
+            <span className="output-label">{t('source.output_dir')}:</span>
             <input
               type="text"
               className="output-input wide"
@@ -775,38 +785,44 @@ export const ImporterView: React.FC<ImporterViewProps> = ({
               onChange={(e) => setOutputDir(e.target.value)}
               placeholder="Destination folder for Live2D packages..."
             />
-            <button className="btn-secondary" onClick={handlePickOutputDir} title="Choose Output Directory">
-              📁
-            </button>
+            <Tooltip title={t('source.output_dir')} body="Live2D 모델 패키지가 저장될 대상 폴더를 선택합니다.">
+              <button className="btn-secondary" onClick={handlePickOutputDir}>
+                📁
+              </button>
+            </Tooltip>
             <select
               className="select-policy"
               value={conflictPolicy}
               onChange={(e) => setConflictPolicy(e.target.value as ConflictPolicy)}
-              title="Conflict Policy"
+              title={t('source.conflict_policy')}
             >
-              <option value="Skip">Skip Existing</option>
-              <option value="UniqueSuffix">Unique Suffix</option>
-              <option value="Overwrite">Overwrite</option>
+              <option value="Skip">{t('source.conflict_skip')}</option>
+              <option value="UniqueSuffix">{t('source.conflict_suffix')}</option>
+              <option value="Overwrite">{t('source.conflict_overwrite')}</option>
             </select>
           </div>
         </div>
 
         <div className="footer-right">
-          <button
-            className="btn-secondary"
-            onClick={() => {
-              if (outputDir) openPath(outputDir).catch((e) => console.warn(e));
-            }}
-          >
-            📂 Open Output
-          </button>
-          <button
-            className="btn-primary btn-large"
-            onClick={handleStartImport}
-            disabled={selectedCount === 0 || isImporting}
-          >
-            ⬇️ Import Selected ({selectedCount})
-          </button>
+          <Tooltip title={t('about.btn_open_output')} body="생성된 Live2D 패키지 폴더를 파일 탐색기로 엽니다.">
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                if (outputDir) openPath(outputDir).catch((e) => console.warn(e));
+              }}
+            >
+              📂 {t('about.btn_open_output')}
+            </button>
+          </Tooltip>
+          <Tooltip contentKey="tooltip.import_models">
+            <button
+              className="btn-primary btn-large"
+              onClick={handleStartImport}
+              disabled={selectedCount === 0 || isImporting}
+            >
+              ⬇️ {t('importer.import_btn')} ({selectedCount})
+            </button>
+          </Tooltip>
         </div>
       </footer>
     </div>

@@ -38,6 +38,7 @@ import { Live2DModelWrapper } from './cubism/model';
 import { ViewerRenderer } from './cubism/renderer';
 import { ViewerCanvas } from './ViewerCanvas';
 import { ViewerControls } from './ViewerControls';
+import { HelpManual } from '../components/HelpManual';
 import { CharacterLibrary } from '../types';
 
 export interface ViewerPageProps {
@@ -75,6 +76,7 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({
   const [recentModels, setRecentModels] = useState<RecentModel[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDesktopActive, setIsDesktopActive] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   // Animations & Expressions State
   const [animations, setAnimations] = useState<ModelAnimationMetadata | null>(null);
@@ -914,6 +916,7 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({
         onSetAsWallpaper={handleSetAsWallpaper}
         onCloseDesktop={handleCloseDesktop}
         onRemotePlayRandomMotion={handleRemotePlayRandomMotion}
+        onOpenHelp={() => setIsHelpOpen(true)}
       />
 
       {/* Main Viewport */}
@@ -1016,6 +1019,13 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({
           onDoubleClick={handleFitView}
         />
       </div>
+
+      <HelpManual
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+        initialTopic="viewer"
+        outputDir={outputDir}
+      />
     </div>
   );
 };

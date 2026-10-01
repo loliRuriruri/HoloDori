@@ -1,6 +1,6 @@
 [package]
 name = "holodori-live2d-manager"
-version = "0.1.0"
+version = "1.0.0"
 description = "HoloDori Live2D Manager desktop conversion utility"
 authors = ["Antigravity Team"]
 edition = "2021"

@@ -5,6 +5,10 @@ import { listen } from '@tauri-apps/api/event';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import './App.css';
+import { useI18n } from './i18n';
+import { Tooltip } from './components/Tooltip';
+import { FirstRunGuide } from './components/FirstRunGuide';
+import { HelpManual } from './components/HelpManual';
 import { ImporterView } from './components/ImporterView';
 import { ViewerPage, ModelPackageTarget } from './viewer';
 import {
@@ -19,6 +23,14 @@ import {
 } from './types';
 
 export const App: React.FC = () => {
+  const { t, lang, setLang } = useI18n();
+
+  // Onboarding & Help modal state
+  const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
+  const [helpInitialTopic, setHelpInitialTopic] = useState<string>('intro');
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
+  const [isAdvancedMode, setIsAdvancedMode] = useState<boolean>(false);
+
   // Viewer Target State (when non-null, embedded Live2D viewer is active)
   const [viewerTarget, setViewerTarget] = useState<ModelPackageTarget | null>(null);
 
@@ -51,6 +63,16 @@ export const App: React.FC = () => {
 
   // Per-outfit session build status memory
   const [outfitBuildStatuses, setOutfitBuildStatuses] = useState<Record<string, BuildStatus>>({});
+
+  // First-run onboarding check
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const done = localStorage.getItem('hdm_onboarding_done');
+      if (!done) {
+        setShowOnboarding(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -377,40 +399,45 @@ export const App: React.FC = () => {
         <div className="brand-title">
           <span className="brand-logo">🎭</span>
           <span>HoloDori Live2D Manager</span>
-          <span className="brand-badge">AGENT.4A</span>
+          <span className="brand-badge">v1.0.0</span>
         </div>
 
         {/* SOURCE MODE TABS */}
         <div className="nav-tabs">
-          <button
-            className={`nav-tab ${sourceMode === 'local' ? 'active' : ''}`}
-            onClick={() => setSourceMode('local')}
-          >
-            <span>📁</span>
-            <span>Local Resource Files</span>
-          </button>
-          <button
-            className={`nav-tab ${sourceMode === 'game' ? 'active' : ''}`}
-            onClick={() => setSourceMode('game')}
-          >
-            <span>🎮</span>
-            <span>HoloDori Installation</span>
-            <span className="tab-badge">AUTO</span>
-          </button>
-          <button
-            className="nav-tab"
-            onClick={handleOpenFolderInViewer}
-            title="Open any built or imported Live2D package directory in the embedded viewer"
-          >
-            <span>👁️</span>
-            <span>Live2D Viewer</span>
-          </button>
+          <Tooltip title={t('source.local_mode')} body={t('help.tab_library')} placement="bottom">
+            <button
+              className={`nav-tab ${sourceMode === 'local' ? 'active' : ''}`}
+              onClick={() => setSourceMode('local')}
+            >
+              <span>📁</span>
+              <span>{t('source.local_mode')}</span>
+            </button>
+          </Tooltip>
+          <Tooltip title={t('source.game_mode')} body={t('importer.subtitle')} placement="bottom">
+            <button
+              className={`nav-tab ${sourceMode === 'game' ? 'active' : ''}`}
+              onClick={() => setSourceMode('game')}
+            >
+              <span>🎮</span>
+              <span>{t('source.game_mode')}</span>
+              <span className="tab-badge">AUTO</span>
+            </button>
+          </Tooltip>
+          <Tooltip title={t('viewer.title')} body={t('help.tab_viewer')} placement="bottom">
+            <button
+              className="nav-tab"
+              onClick={handleOpenFolderInViewer}
+            >
+              <span>👁️</span>
+              <span>{t('nav.viewer')}</span>
+            </button>
+          </Tooltip>
         </div>
 
-        {sourceMode === 'local' && (
-          <div className="header-actions">
+        <div className="header-actions">
+          {sourceMode === 'local' && (
             <div className="output-config">
-              <span className="output-label">Output:</span>
+              <span className="output-label">{t('source.output_dir')}:</span>
               <input
                 type="text"
                 className="output-input"
@@ -418,22 +445,98 @@ export const App: React.FC = () => {
                 onChange={(e) => setOutputDir(e.target.value)}
                 placeholder="Output directory..."
               />
-              <button className="btn-secondary" onClick={handlePickOutputDir} title="Choose Output Directory">
-                📁
-              </button>
+              <Tooltip title={t('source.output_dir')} body="Live2D 모델 패키지가 저장될 폴더를 선택합니다.">
+                <button className="btn-secondary" onClick={handlePickOutputDir}>
+                  📁
+                </button>
+              </Tooltip>
               <select
                 className="select-policy"
                 value={conflictPolicy}
                 onChange={(e) => setConflictPolicy(e.target.value as ConflictPolicy)}
-                title="Conflict Policy"
+                title={t('source.conflict_policy')}
               >
-                <option value="Skip">Skip Existing</option>
-                <option value="UniqueSuffix">Unique Suffix</option>
-                <option value="Overwrite">Overwrite (Explicit)</option>
+                <option value="Skip">{t('source.conflict_skip')}</option>
+                <option value="UniqueSuffix">{t('source.conflict_suffix')}</option>
+                <option value="Overwrite">{t('source.conflict_overwrite')}</option>
               </select>
             </div>
+          )}
+
+          {/* Normal vs Advanced Mode Toggle */}
+          <div style={{ display: 'flex', background: '#1e222b', borderRadius: '6px', border: '1px solid #333842', padding: '2px' }}>
+            <button
+              onClick={() => setIsAdvancedMode(false)}
+              style={{
+                padding: '3px 8px',
+                fontSize: '11px',
+                fontWeight: !isAdvancedMode ? 600 : 400,
+                background: !isAdvancedMode ? '#3b82f6' : 'transparent',
+                color: !isAdvancedMode ? '#fff' : '#888e9b',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+              title={t('nav.mode_normal')}
+            >
+              {t('nav.mode_normal')}
+            </button>
+            <button
+              onClick={() => setIsAdvancedMode(true)}
+              style={{
+                padding: '3px 8px',
+                fontSize: '11px',
+                fontWeight: isAdvancedMode ? 600 : 400,
+                background: isAdvancedMode ? '#3b82f6' : 'transparent',
+                color: isAdvancedMode ? '#fff' : '#888e9b',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+              title={t('nav.mode_advanced')}
+            >
+              {t('nav.mode_advanced')}
+            </button>
           </div>
-        )}
+
+          {/* Language Switcher */}
+          <button
+            className="btn-secondary btn-small"
+            onClick={() => setLang(lang === 'ko' ? 'en' : 'ko')}
+            style={{ fontWeight: 600, minWidth: '64px', cursor: 'pointer' }}
+            title={lang === 'ko' ? 'Switch interface to English' : '인터페이스를 한국어로 전환'}
+          >
+            🌐 {lang === 'ko' ? '한국어' : 'English'}
+          </button>
+
+          {/* Contextual Help */}
+          <button
+            className="btn-secondary btn-small"
+            onClick={() => {
+              setHelpInitialTopic(sourceMode === 'game' ? 'importer' : 'library');
+              setIsHelpOpen(true);
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+            title={t('nav.contextual_help')}
+          >
+            <span>ⓘ</span>
+            <span>{t('nav.contextual_help')}</span>
+          </button>
+
+          {/* Help Manual */}
+          <button
+            className="btn-primary btn-small"
+            onClick={() => {
+              setHelpInitialTopic('intro');
+              setIsHelpOpen(true);
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+            title={t('nav.help')}
+          >
+            <span>❓</span>
+            <span>{t('nav.help')}</span>
+          </button>
+        </div>
       </header>
 
       {sourceMode === 'game' ? (
@@ -454,31 +557,36 @@ export const App: React.FC = () => {
           {/* TOP CONTROL BAR */}
       <div className="top-control-bar">
         <div className="source-row">
-          <button className="btn-primary" onClick={handlePickSourceFolder} disabled={isScanning || isBuilding}>
-            📂 Select Source Folder
-          </button>
+          <Tooltip title={t('source.select_folder')} body="Live2D 에셋이 추출되어 있는 로컬 폴더를 직접 선택합니다.">
+            <button className="btn-primary" onClick={handlePickSourceFolder} disabled={isScanning || isBuilding}>
+              {t('source.select_folder')}
+            </button>
+          </Tooltip>
           <input
             type="text"
             className="source-input"
             value={sourcePath}
             onChange={(e) => setSourcePath(e.target.value)}
-            placeholder="Path to extracted Live2D assets folder..."
+            placeholder={t('library.search_placeholder')}
           />
-          <button
-            className="btn-secondary"
-            onClick={() => triggerScan(sourcePath, false)}
-            disabled={!sourcePath || isScanning || isBuilding}
-          >
-            {isScanning ? 'Scanning...' : '🔄 Rescan'}
-          </button>
-          <button
-            className="btn-secondary btn-outline"
-            onClick={() => triggerScan(sourcePath, true)}
-            disabled={!sourcePath || isScanning || isBuilding}
-            title="Bypass cache and force full rescan"
-          >
-            ⚡ Force Rescan
-          </button>
+          <Tooltip contentKey="tooltip.scan_library">
+            <button
+              className="btn-secondary"
+              onClick={() => triggerScan(sourcePath, false)}
+              disabled={!sourcePath || isScanning || isBuilding}
+            >
+              {isScanning ? t('library.scanning') : `🔄 ${t('library.scan_button')}`}
+            </button>
+          </Tooltip>
+          <Tooltip title="강제 전체 재검색" body="캐시를 무시하고 모든 하위 폴더의 MOC3와 텍스처를 처음부터 다시 검색합니다.">
+            <button
+              className="btn-secondary btn-outline"
+              onClick={() => triggerScan(sourcePath, true)}
+              disabled={!sourcePath || isScanning || isBuilding}
+            >
+              ⚡ Force Rescan
+            </button>
+          </Tooltip>
         </div>
 
         <div className="filter-row">
@@ -488,7 +596,7 @@ export const App: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by Char ID (00007), Outfit (001), Style (nrml)..."
+              placeholder={t('library.search_placeholder')}
             />
             {searchQuery && (
               <button className="btn-clear-search" onClick={() => setSearchQuery('')}>
@@ -498,21 +606,21 @@ export const App: React.FC = () => {
           </div>
 
           <div className="filter-group">
-            <label>Status:</label>
+            <label>{t('library.style_label')}:</label>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as LibraryFilter)}>
-              <option value="All">All Outfits</option>
-              <option value="Buildable">Buildable Only</option>
+              <option value="All">{t('library.filter_all')}</option>
+              <option value="Buildable">{t('library.filter_ready')}</option>
               <option value="Built">Built in Session</option>
               <option value="Warnings">Has Warnings</option>
-              <option value="Ambiguous">Ambiguous Matches</option>
+              <option value="Ambiguous">{t('library.filter_incomplete')}</option>
               <option value="Failed">Failed Only</option>
             </select>
           </div>
 
           <div className="filter-group">
-            <label>Style:</label>
+            <label>{t('library.style_label')}:</label>
             <select value={styleFilter} onChange={(e) => setStyleFilter(e.target.value as StyleFilter)}>
-              <option value="All">All Styles</option>
+              <option value="All">{t('library.style_all')}</option>
               <option value="Nrml">nrml (Normal)</option>
               <option value="Uniq">uniq (Unique)</option>
               <option value="Cmmn">cmmn (Common)</option>
@@ -531,14 +639,14 @@ export const App: React.FC = () => {
         {/* LEFT COLUMN: Character Sidebar */}
         <div className="character-sidebar">
           <div className="sidebar-header">
-            <h3>Characters ({filteredCharacters.length})</h3>
+            <h3>{t('nav.library')} ({filteredCharacters.length})</h3>
             <button className="btn-link" onClick={handleSelectAllValid} title="Select all valid outfits across all characters">
-              Select Valid
+              {t('library.filter_ready')}
             </button>
           </div>
           <div className="character-list">
             {filteredCharacters.length === 0 ? (
-              <div className="empty-hint">No characters match the filter.</div>
+              <div className="empty-hint">{t('library.empty_title')}</div>
             ) : (
               filteredCharacters.map((char) => {
                 const isSelected = currentCharacter?.character_id === char.character_id;
@@ -594,16 +702,16 @@ export const App: React.FC = () => {
                   Character <span className="highlight">{currentCharacter.character_id}</span> Outfits ({currentCharacter.outfits.length})
                 </>
               ) : (
-                'Select a Character'
+                t('library.empty_title')
               )}
             </h2>
             {currentCharacter && (
               <div className="outfit-quick-actions">
                 <button className="btn-small" onClick={() => selectAllForCharacter(currentCharacter.character_id)}>
-                  Select All
+                  {t('importer.select_all')}
                 </button>
                 <button className="btn-small" onClick={() => deselectAllForCharacter(currentCharacter.character_id)}>
-                  Deselect All
+                  {t('importer.deselect_all')}
                 </button>
               </div>
             )}
@@ -611,8 +719,26 @@ export const App: React.FC = () => {
 
           <div className="outfits-grid">
             {!currentCharacter || currentCharacter.outfits.length === 0 ? (
-              <div className="empty-state">
-                <p>No outfits found for this character matching active filters.</p>
+              <div className="empty-state" style={{ textAlign: 'center', padding: '48px 24px', background: '#1e222b', borderRadius: '8px', border: '1px dashed #3a3f4b' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎭</div>
+                <h3 style={{ fontSize: '18px', color: '#e5e7eb', marginBottom: '8px' }}>{t('library.empty_title')}</h3>
+                <p style={{ fontSize: '13px', color: '#9da5b4', maxWidth: '440px', margin: '0 auto 20px auto', lineHeight: '1.6' }}>
+                  {t('library.empty_desc')}
+                </p>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                  <button className="btn-primary" onClick={() => setSourceMode('game')}>
+                    🎮 {t('library.empty_action_import')}
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => {
+                      setHelpInitialTopic('importer');
+                      setIsHelpOpen(true);
+                    }}
+                  >
+                    ❓ {t('library.empty_action_help')}
+                  </button>
+                </div>
               </div>
             ) : (
               currentCharacter.outfits.map((outfit) => {
@@ -848,44 +974,50 @@ export const App: React.FC = () => {
               )}
 
               <div className="details-actions" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button
-                  className="btn-viewer btn-block"
-                  style={{
-                    backgroundColor: '#98c379',
-                    color: '#181a1f',
-                    fontWeight: 600,
-                    padding: '8px 12px',
-                    borderRadius: '4px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                  }}
-                  onClick={() => {
-                    const pkgDir = `${outputDir}/${activeOutfit.id}`;
-                    setViewerTarget({
-                      packageDir: pkgDir,
-                      characterId: activeOutfit.character_id,
-                      outfitId: activeOutfit.outfit_id,
-                      displayName: `${activeOutfit.id} (${activeOutfit.style_token || 'Normal'})`,
-                    });
-                  }}
-                >
-                  👁️ Open in Live2D Viewer
-                </button>
-                <button
-                  className="btn-primary btn-block"
-                  onClick={() => handleBatchBuild([activeOutfit])}
-                  disabled={isBuilding}
-                >
-                  🚀 Build This Model
-                </button>
+                <Tooltip title={t('viewer.title')} body="선택한 의상 모델을 내장 WebGL Live2D 뷰어로 실행합니다.">
+                  <button
+                    className="btn-viewer btn-block"
+                    style={{
+                      backgroundColor: '#98c379',
+                      color: '#181a1f',
+                      fontWeight: 600,
+                      padding: '8px 12px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      width: '100%',
+                    }}
+                    onClick={() => {
+                      const pkgDir = `${outputDir}/${activeOutfit.id}`;
+                      setViewerTarget({
+                        packageDir: pkgDir,
+                        characterId: activeOutfit.character_id,
+                        outfitId: activeOutfit.outfit_id,
+                        displayName: `${activeOutfit.id} (${activeOutfit.style_token || 'Normal'})`,
+                      });
+                    }}
+                  >
+                    👁️ {t('viewer.title')}
+                  </button>
+                </Tooltip>
+                <Tooltip title={t('library.build_selected', { count: 1 })} body="선택한 모델의 Live2D 패키지(model3.json)를 생성합니다.">
+                  <button
+                    className="btn-primary btn-block"
+                    style={{ width: '100%' }}
+                    onClick={() => handleBatchBuild([activeOutfit])}
+                    disabled={isBuilding}
+                  >
+                    🚀 {t('library.build_selected', { count: 1 })}
+                  </button>
+                </Tooltip>
               </div>
             </div>
           ) : (
-            <div className="empty-hint">Select an outfit from the cards to inspect details.</div>
+            <div className="empty-hint">{t('library.empty_title')}</div>
           )}
         </div>
       </div>
@@ -897,10 +1029,10 @@ export const App: React.FC = () => {
             Selected: <strong>{selectedOutfitIds.size}</strong> of {allOutfits.length} model(s)
           </span>
           <button className="btn-secondary btn-small" onClick={handleSelectAllValid} disabled={isBuilding}>
-            Select All Valid
+            {t('library.filter_ready')}
           </button>
           <button className="btn-secondary btn-small" onClick={handleClearSelection} disabled={isBuilding}>
-            Clear
+            {t('importer.deselect_all')}
           </button>
         </div>
 
@@ -923,28 +1055,34 @@ export const App: React.FC = () => {
         )}
 
         <div className="footer-right">
-          <button className="btn-secondary" onClick={handleOpenOutput}>
-            📂 Open Output
-          </button>
-          <button
-            className="btn-primary"
-            onClick={() => handleBatchBuild(selectedOutfitsList)}
-            disabled={selectedOutfitsList.length === 0 || isBuilding}
-          >
-            🚀 Build Selected ({selectedOutfitsList.length})
-          </button>
-          <button
-            className="btn-primary btn-outline"
-            onClick={() => {
-              const valid = allOutfits.filter(
-                (o) => o.match_status !== 'Ambiguous' && o.match_status !== 'NoMatch' && o.textures.length > 0
-              );
-              handleBatchBuild(valid);
-            }}
-            disabled={allOutfits.length === 0 || isBuilding}
-          >
-            ⚡ Build All Valid
-          </button>
+          <Tooltip title={t('about.btn_open_output')} body="생성된 Live2D 패키지가 위치한 출력 폴더를 파일 탐색기로 엽니다.">
+            <button className="btn-secondary" onClick={handleOpenOutput}>
+              📂 {t('about.btn_open_output')}
+            </button>
+          </Tooltip>
+          <Tooltip contentKey="tooltip.import_models">
+            <button
+              className="btn-primary"
+              onClick={() => handleBatchBuild(selectedOutfitsList)}
+              disabled={selectedOutfitsList.length === 0 || isBuilding}
+            >
+              🚀 {t('library.build_selected', { count: selectedOutfitsList.length })}
+            </button>
+          </Tooltip>
+          <Tooltip contentKey="tooltip.import_models">
+            <button
+              className="btn-primary btn-outline"
+              onClick={() => {
+                const valid = allOutfits.filter(
+                  (o) => o.match_status !== 'Ambiguous' && o.match_status !== 'NoMatch' && o.textures.length > 0
+                );
+                handleBatchBuild(valid);
+              }}
+              disabled={allOutfits.length === 0 || isBuilding}
+            >
+              {t('library.build_all_valid')}
+            </button>
+          </Tooltip>
         </div>
       </footer>
       </>
@@ -959,6 +1097,24 @@ export const App: React.FC = () => {
         onSwitchModel={(newTarget) => setViewerTarget(newTarget)}
       />
     )}
+
+    <HelpManual
+      isOpen={isHelpOpen}
+      onClose={() => setIsHelpOpen(false)}
+      initialTopic={helpInitialTopic}
+      onRestartOnboarding={() => setShowOnboarding(true)}
+      outputDir={outputDir}
+    />
+
+    <FirstRunGuide
+      isOpen={showOnboarding}
+      onClose={(dontShowAgain) => {
+        setShowOnboarding(false);
+        if (dontShowAgain && typeof window !== 'undefined') {
+          localStorage.setItem('hdm_onboarding_done', 'true');
+        }
+      }}
+    />
   </div>
 );
 };

@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { useI18n } from '../i18n';
+import { Tooltip } from '../components/Tooltip';
 import {
   ViewportTransform,
   ViewerOptions,
@@ -85,6 +87,7 @@ interface ViewerControlsProps {
   onSetAsWallpaper?: () => void;
   onCloseDesktop?: () => void;
   onRemotePlayRandomMotion?: () => void;
+  onOpenHelp?: (topic?: string) => void;
 }
 
 const PARAM_CATEGORIES: ('All' | ParameterCategory)[] = [
@@ -153,7 +156,9 @@ export const ViewerControls: React.FC<ViewerControlsProps> = ({
   onSetAsWallpaper,
   onCloseDesktop,
   onRemotePlayRandomMotion,
+  onOpenHelp,
 }) => {
+  const { t, lang, setLang } = useI18n();
   const [activeTab, setActiveTab] = useState<'motions' | 'expressions' | 'favorites' | 'advanced'>('motions');
   const [paramSearch, setParamSearch] = useState('');
   const [motionSearch, setMotionSearch] = useState('');
@@ -283,7 +288,7 @@ export const ViewerControls: React.FC<ViewerControlsProps> = ({
               fontWeight: 500,
             }}
           >
-            ← Library
+            ← {t('viewer.back_to_library')}
           </button>
 
           <span
@@ -324,7 +329,7 @@ export const ViewerControls: React.FC<ViewerControlsProps> = ({
                 cursor: 'pointer',
               }}
             >
-              Player
+              {t('nav.mode_normal')}
             </button>
             <button
               onClick={() => onChangeMode('advanced')}
@@ -339,7 +344,7 @@ export const ViewerControls: React.FC<ViewerControlsProps> = ({
                 cursor: 'pointer',
               }}
             >
-              Advanced
+              {t('nav.mode_advanced')}
             </button>
           </div>
 
@@ -570,85 +575,51 @@ export const ViewerControls: React.FC<ViewerControlsProps> = ({
           >
             +
           </button>
-          <button
-            onClick={onFitView}
-            style={{
-              padding: '4px 8px',
-              borderRadius: '6px',
-              border: '1px solid #333842',
-              background: '#21252b',
-              color: '#abb2bf',
-              fontSize: '12px',
-              cursor: 'pointer',
-            }}
-            title="Fit to Viewport (F or Double Click)"
-          >
-            Fit
-          </button>
-          <button
-            onClick={onResetCamera}
-            style={{
-              padding: '4px 8px',
-              borderRadius: '6px',
-              border: '1px solid #333842',
-              background: '#21252b',
-              color: '#abb2bf',
-              fontSize: '12px',
-              cursor: 'pointer',
-            }}
-            title="Reset Camera (0)"
-          >
-            100%
-          </button>
+          <Tooltip contentKey="tooltip.fit_view">
+            <button
+              onClick={onFitView}
+              style={{
+                padding: '4px 8px',
+                borderRadius: '6px',
+                border: '1px solid #333842',
+                background: '#21252b',
+                color: '#abb2bf',
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              {t('viewer.fit')}
+            </button>
+          </Tooltip>
+          <Tooltip contentKey="tooltip.reset_camera">
+            <button
+              onClick={onResetCamera}
+              style={{
+                padding: '4px 8px',
+                borderRadius: '6px',
+                border: '1px solid #333842',
+                background: '#21252b',
+                color: '#abb2bf',
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              100%
+            </button>
+          </Tooltip>
 
           {/* Desktop Character Button */}
           {onSendToDesktop && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <button
-                onClick={isDesktopActive ? onCloseDesktop : onSendToDesktop}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  border: `1px solid ${isDesktopActive ? '#10b981' : '#3b82f6'}`,
-                  background: isDesktopActive ? 'rgba(16, 185, 129, 0.15)' : '#1e3a8a',
-                  color: isDesktopActive ? '#34d399' : '#93c5fd',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontWeight: 500,
-                }}
-                title={
-                  isDesktopActive
-                    ? 'Desktop Character is Active (Click to Close Desktop Window)'
-                    : 'Send Character to Floating Desktop Window'
-                }
-              >
-                <span>🗔</span>
-                <span>{isDesktopActive ? 'Desktop Active' : 'Send to Desktop'}</span>
-                {isDesktopActive && (
-                  <span
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      background: '#10b981',
-                      boxShadow: '0 0 6px #10b981',
-                    }}
-                  />
-                )}
-              </button>
-
-              {!isDesktopActive && onSetAsWallpaper && (
+              <Tooltip contentKey="tooltip.send_to_desktop">
                 <button
-                  onClick={onSetAsWallpaper}
+                  onClick={isDesktopActive ? onCloseDesktop : onSendToDesktop}
                   style={{
-                    padding: '4px 8px',
+                    padding: '4px 10px',
                     borderRadius: '6px',
-                    border: '1px solid #10b981',
-                    background: '#064e3b',
-                    color: '#6ee7b7',
+                    border: `1px solid ${isDesktopActive ? '#10b981' : '#3b82f6'}`,
+                    background: isDesktopActive ? 'rgba(16, 185, 129, 0.15)' : '#1e3a8a',
+                    color: isDesktopActive ? '#34d399' : '#93c5fd',
                     fontSize: '12px',
                     cursor: 'pointer',
                     display: 'flex',
@@ -656,11 +627,45 @@ export const ViewerControls: React.FC<ViewerControlsProps> = ({
                     gap: '6px',
                     fontWeight: 500,
                   }}
-                  title="Host Character Directly on Windows Wallpaper (Behind Desktop Icons)"
                 >
-                  <span>🖼️</span>
-                  <span>Set as Wallpaper</span>
+                  <span>🗔</span>
+                  <span>{isDesktopActive ? 'Desktop Active' : t('viewer.send_to_desktop')}</span>
+                  {isDesktopActive && (
+                    <span
+                      style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        background: '#10b981',
+                        boxShadow: '0 0 6px #10b981',
+                      }}
+                    />
+                  )}
                 </button>
+              </Tooltip>
+
+              {!isDesktopActive && onSetAsWallpaper && (
+                <Tooltip contentKey="tooltip.set_as_wallpaper">
+                  <button
+                    onClick={onSetAsWallpaper}
+                    style={{
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      border: '1px solid #10b981',
+                      background: '#064e3b',
+                      color: '#6ee7b7',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <span>🖼️</span>
+                    <span>{t('viewer.send_to_wallpaper')}</span>
+                  </button>
+                </Tooltip>
               )}
 
               {isDesktopActive && onRemotePlayRandomMotion && (
@@ -684,21 +689,64 @@ export const ViewerControls: React.FC<ViewerControlsProps> = ({
           )}
 
           {/* Fullscreen Button */}
+          <Tooltip title={t('viewer.fullscreen')} shortcut="F11">
+            <button
+              onClick={onToggleFullscreen}
+              style={{
+                padding: '4px 8px',
+                borderRadius: '6px',
+                border: '1px solid #333842',
+                background: '#21252b',
+                color: isFullscreen ? '#4f8ff7' : '#abb2bf',
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              {isFullscreen ? '⤓' : '⤢'}
+            </button>
+          </Tooltip>
+
+          {/* Language Switcher */}
           <button
-            onClick={onToggleFullscreen}
+            onClick={() => setLang(lang === 'ko' ? 'en' : 'ko')}
             style={{
               padding: '4px 8px',
               borderRadius: '6px',
               border: '1px solid #333842',
               background: '#21252b',
-              color: isFullscreen ? '#4f8ff7' : '#abb2bf',
+              color: '#abb2bf',
               fontSize: '12px',
+              fontWeight: 600,
               cursor: 'pointer',
             }}
-            title="Fullscreen Toggle (F11)"
+            title={lang === 'ko' ? 'Switch to English' : '한국어로 전환'}
           >
-            {isFullscreen ? '⤓' : '⤢'}
+            🌐 {lang === 'ko' ? '한국어' : 'English'}
           </button>
+
+          {/* Help Button */}
+          {onOpenHelp && (
+            <button
+              onClick={() => onOpenHelp('viewer')}
+              style={{
+                padding: '4px 8px',
+                borderRadius: '6px',
+                border: '1px solid #3b82f6',
+                background: '#1d4ed8',
+                color: '#fff',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+              title={t('nav.contextual_help')}
+            >
+              <span>ⓘ</span>
+              <span>{t('nav.contextual_help')}</span>
+            </button>
+          )}
 
           {/* Sidebar Toggle */}
           <button
@@ -782,60 +830,63 @@ export const ViewerControls: React.FC<ViewerControlsProps> = ({
         )}
 
         {/* Random Motion Button */}
-        <button
-          onClick={onPlayRandomMotion}
-          style={{
-            padding: '6px 12px',
-            borderRadius: '8px',
-            border: '1px solid #3e4451',
-            background: '#282c34',
-            color: '#abb2bf',
-            fontSize: '13px',
-            cursor: 'pointer',
-          }}
-          title="Play Random Motion (R)"
-        >
-          🎲 Random
-        </button>
+        <Tooltip contentKey="tooltip.random_motion">
+          <button
+            onClick={onPlayRandomMotion}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              border: '1px solid #3e4451',
+              background: '#282c34',
+              color: '#abb2bf',
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            🎲 {t('motion.random')}
+          </button>
+        </Tooltip>
 
         {/* Auto Motion Toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <button
-            onClick={onToggleAutoMotion}
-            style={{
-              padding: '6px 10px',
-              borderRadius: '8px',
-              border: `1px solid ${autoMotion ? '#4f8ff7' : '#3e4451'}`,
-              background: autoMotion ? 'rgba(79, 143, 247, 0.2)' : '#282c34',
-              color: autoMotion ? '#4f8ff7' : '#abb2bf',
-              fontSize: '12px',
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
-            title="Auto-play random motions after idle delay"
-          >
-            Auto Motion {autoMotion ? 'ON' : 'OFF'}
-          </button>
+          <Tooltip contentKey="tooltip.auto_motion">
+            <button
+              onClick={onToggleAutoMotion}
+              style={{
+                padding: '6px 10px',
+                borderRadius: '8px',
+                border: `1px solid ${autoMotion ? '#4f8ff7' : '#3e4451'}`,
+                background: autoMotion ? 'rgba(79, 143, 247, 0.2)' : '#282c34',
+                color: autoMotion ? '#4f8ff7' : '#abb2bf',
+                fontSize: '12px',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              {t('motion.auto')} {autoMotion ? 'ON' : 'OFF'}
+            </button>
+          </Tooltip>
 
           {autoMotion && (
-            <select
-              value={autoMotionDelaySec}
-              onChange={(e) => onChangeAutoMotionDelay(Number(e.target.value))}
-              style={{
-                background: '#1a1d24',
-                color: '#abb2bf',
-                border: '1px solid #333842',
-                borderRadius: '4px',
-                padding: '4px',
-                fontSize: '11px',
-              }}
-              title="Idle delay between auto motions"
-            >
-              <option value={1}>1s delay</option>
-              <option value={2}>2s delay</option>
-              <option value={3}>3s delay</option>
-              <option value={5}>5s delay</option>
-            </select>
+            <Tooltip contentKey="tooltip.auto_motion_delay">
+              <select
+                value={autoMotionDelaySec}
+                onChange={(e) => onChangeAutoMotionDelay(Number(e.target.value))}
+                style={{
+                  background: '#1a1d24',
+                  color: '#abb2bf',
+                  border: '1px solid #333842',
+                  borderRadius: '4px',
+                  padding: '4px',
+                  fontSize: '11px',
+                }}
+              >
+                <option value={1}>{t('motion.interval_unit', { sec: 1 })}</option>
+                <option value={2}>{t('motion.interval_unit', { sec: 2 })}</option>
+                <option value={3}>{t('motion.interval_unit', { sec: 3 })}</option>
+                <option value={5}>{t('motion.interval_unit', { sec: 5 })}</option>
+              </select>
+            </Tooltip>
           )}
         </div>
 
@@ -950,12 +1001,12 @@ export const ViewerControls: React.FC<ViewerControlsProps> = ({
                 }}
               >
                 {tab === 'motions'
-                  ? isLoadingAnimations ? 'Motions...' : `Motions (${motions.length})`
+                  ? isLoadingAnimations ? `${t('viewer.motion_tab')}...` : `${t('viewer.motion_tab')} (${motions.length})`
                   : tab === 'expressions'
-                  ? `Exp (${expressions.length})`
+                  ? `${t('viewer.expression_tab')} (${expressions.length})`
                   : tab === 'favorites'
-                  ? `★ Favs`
-                  : 'Advanced'}
+                  ? `★ ${t('viewer.favorites_tab')}`
+                  : t('viewer.advanced_tab')}
               </button>
             ))}
           </div>

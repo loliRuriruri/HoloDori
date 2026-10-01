@@ -88,3 +88,14 @@ Upon launch, HDM automatically queries your Steam configuration (`libraryfolders
    - All desktop icons, shortcuts, and selection rectangles remain 100% visible, clickable, and responsive.
    - If Windows Explorer restarts, the built-in watchdog recovers the wallpaper automatically within 2.5 seconds.
    - To return to floating overlay mode, right-click the tray icon and select **Mode: Desktop Overlay**.
+
+---
+
+## 8. Korean Localization & Help System (한국어 지원 및 도움말)
+
+HDM v1.0.0 is built with first-class Korean localization and an offline help system:
+
+- **Language Switch**: Click `🌐 한국어` or `English` in the top header to instantly switch languages. HDM defaults to Korean on Korean Windows systems.
+- **Interactive Tooltips**: Hover over any button or setting for 450ms to view its purpose, shortcut keys, and technical explanations.
+- **Offline Help Manual**: Click `? 도움말` in the header or press `F1` at any time to open the built-in 12-topic manual, complete with search, keyboard shortcuts, technical glossary, and FAQ.
+- **First-Run Guide**: Click `ⓘ 사용법` to reopen the step-by-step onboarding walkthrough at any time.

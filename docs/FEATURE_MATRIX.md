@@ -57,7 +57,20 @@ This document provides a factual matrix of implemented, planned, and intentional
 
 ---
 
-## 4. Platform & Distribution Boundary
+## 4. Localization & User Experience
+
+| Feature | Status | Notes |
+|---|:---:|---|
+| **Primary Korean Localization (한국어)** | ✅ Supported | Complete UI localization in natural Korean without raw machine translation. |
+| **English Fallback Localization** | ✅ Supported | 100% dictionary key parity with instant fallback. |
+| **Interactive Hover Tooltip System** | ✅ Supported | 450ms floating tooltips with title, body, keyboard shortcuts, and notes. |
+| **Offline User Manual (`HelpManual`)** | ✅ Supported | 12 structured topics accessible offline directly within the application. |
+| **Guided First-Run Onboarding** | ✅ Supported | 6-step walkthrough introducing the import-to-wallpaper workflow. |
+| **Normal Mode vs. Advanced Mode** | ✅ Supported | Clean view for casual users with optional deep diagnostics view. |
+
+---
+
+## 5. Platform & Distribution Boundary
 
 | Category | Status | Rationale |
 |---|:---:|---|
