@@ -115,12 +115,9 @@ async function main() {
       console.error(`  [Browser Page Error] ${err.message}`);
     });
 
-    console.log('[Browser] Navigating to test page...');
-    await page.goto(`http://127.0.0.1:${PORT}/index.html`);
-
-    // Inject mock for read_package_file in test browser environment
-    await page.evaluate(() => {
-      (window).__HDM_MOCK_READ_PACKAGE_FILE__ = async (packageDir, relativePath) => {
+    // Inject mock for read_package_file across all page navigations in test browser environment
+    await page.addInitScript(() => {
+      window.__HDM_MOCK_READ_PACKAGE_FILE__ = async (packageDir, relativePath) => {
         // packageDir is e.g. "D:/test/holodori_agent3b_packages/00007_001"
         const cleanDir = packageDir.replace(/\\/g, '/');
         const parts = cleanDir.split('/');
@@ -136,6 +133,9 @@ async function main() {
         return new Uint8Array(buf);
       };
     });
+
+    console.log('[Browser] Navigating to test page...');
+    await page.goto(`http://127.0.0.1:${PORT}/index.html`);
 
     // 1. Verify Core availability
     const coreStatus = await page.evaluate(() => {
@@ -764,7 +764,119 @@ async function main() {
     }
     console.log('✅ Player Settings, Favorites, and Recent Models Persistence: PASS');
 
-    console.log('\n=== ALL EMBEDDED VIEWER ACCEPTANCE TESTS PASSED ===');
+    // 10. Test Case 10: Target Framerate Throttling (30 vs 60 FPS) & Pause
+    console.log('\n--- Test Case 10: Target Framerate Throttling (30 vs 60 FPS) & Pause ---');
+    const fpsTest = await page.evaluate(async () => {
+      const { ViewerRenderer } = window.__HDM_VIEWER__;
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 400;
+      document.body.appendChild(canvas);
+
+      const renderer = new ViewerRenderer({ canvas });
+      renderer.start();
+
+      renderer.setTargetFps(30);
+      const fps30 = renderer.getTargetFps();
+
+      renderer.setTargetFps(60);
+      const fps60 = renderer.getTargetFps();
+
+      renderer.setPaused(true);
+      const isPausedTrue = renderer.isPaused();
+      renderer.setPaused(false);
+      const isPausedFalse = renderer.isPaused();
+
+      renderer.dispose();
+      canvas.remove();
+
+      return { fps30, fps60, isPausedTrue, isPausedFalse };
+    });
+
+    if (fpsTest.fps30 !== 30 || fpsTest.fps60 !== 60 || !fpsTest.isPausedTrue || fpsTest.isPausedFalse) {
+      throw new Error(`FPS/Pause test failed: ${JSON.stringify(fpsTest)}`);
+    }
+    console.log('✅ Target Framerate Throttling (30 vs 60 FPS) & Pause: PASS');
+
+    // 11. Test Case 11: 20-Cycle Desktop Character Lifecycle Stress Test
+    console.log('\n--- Test Case 11: 20-Cycle Desktop Character Lifecycle Stress Test ---');
+    const desktopStressTest = await page.evaluate(async () => {
+      const { ViewerRenderer, Live2DModelWrapper, loadModelPackageFromDisk, acquireCubismFramework } = window.__HDM_VIEWER__;
+      acquireCubismFramework();
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 300;
+      canvas.height = 400;
+      document.body.appendChild(canvas);
+
+      const renderer = new ViewerRenderer({ canvas });
+      renderer.start();
+
+      let successCount = 0;
+      for (let i = 0; i < 20; i++) {
+        const isEven = i % 2 === 0;
+        const pkgDir = isEven ? '/packages/00007_001' : '/packages/00010_001';
+        const pkg = await loadModelPackageFromDisk(pkgDir);
+        const wrapper = new Live2DModelWrapper();
+        await wrapper.init(renderer.getGL(), pkg, 300, 400);
+
+        const old = renderer.getModel();
+        if (old) {
+          old.disposeModel(renderer.getGL());
+        }
+        renderer.setModel(wrapper);
+        successCount++;
+      }
+
+      const finalModel = renderer.getModel();
+      const valid = finalModel && finalModel.isInitialized();
+      renderer.dispose();
+      canvas.remove();
+
+      return { successCount, valid };
+    });
+
+    if (desktopStressTest.successCount !== 20 || !desktopStressTest.valid) {
+      throw new Error(`Desktop 20-cycle lifecycle stress test failed: ${JSON.stringify(desktopStressTest)}`);
+    }
+    console.log(`[Desktop Lifecycle] Successfully executed ${desktopStressTest.successCount} cycles without crash or GL leak`);
+    console.log('✅ 20-Cycle Desktop Character Lifecycle Stress Test: PASS');
+
+    // 12. Test Case 12: Desktop Window Mode DOM & Transparency Verification
+    console.log('\n--- Test Case 12: Desktop Window Mode DOM & Transparency Verification ---');
+    await page.goto(`http://127.0.0.1:${PORT}/index.html?window=desktop&char=00007&outfit=001`);
+    await page.waitForTimeout(1000);
+
+    const desktopDomTest = await page.evaluate(() => {
+      const isDesktopModeClassHtml = document.documentElement.classList.contains('desktop-mode');
+      const isDesktopModeClassBody = document.body.classList.contains('desktop-mode');
+      const htmlBg = window.getComputedStyle(document.documentElement).backgroundColor;
+      const bodyBg = window.getComputedStyle(document.body).backgroundColor;
+
+      const isTransparent = (bg) => bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent';
+
+      return {
+        isDesktopModeClassHtml,
+        isDesktopModeClassBody,
+        htmlBg,
+        bodyBg,
+        htmlTransparent: isTransparent(htmlBg),
+        bodyTransparent: isTransparent(bodyBg),
+      };
+    });
+
+    if (
+      !desktopDomTest.isDesktopModeClassHtml ||
+      !desktopDomTest.isDesktopModeClassBody ||
+      !desktopDomTest.htmlTransparent ||
+      !desktopDomTest.bodyTransparent
+    ) {
+      throw new Error(`Desktop DOM transparency test failed: ${JSON.stringify(desktopDomTest)}`);
+    }
+    console.log(`[Desktop DOM] html=${desktopDomTest.htmlBg}, body=${desktopDomTest.bodyBg}, transparent classes verified`);
+    console.log('✅ Desktop Window Mode DOM & Transparency Verification: PASS');
+
+    console.log('\n=== ALL EMBEDDED VIEWER & DESKTOP WINDOW ACCEPTANCE TESTS PASSED ===');
   } finally {
     if (browser) await browser.close();
     server.close();

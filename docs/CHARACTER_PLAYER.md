@@ -111,3 +111,15 @@ Player state is stored locally via Tauri IPC (`load_player_settings` / `save_pla
 | `F11` | Fullscreen | Toggles window/document fullscreen mode |
 | `Esc` | Exit Fullscreen | Exits fullscreen mode if active |
 | `Double Click` | Fit to View | Double-clicking the canvas centers and fits the model |
+
+---
+
+## 7. Desktop Character Mode (Send to Desktop)
+
+Clicking the **"Send to Desktop"** button in the Character Player header launches the floating desktop companion window:
+- **Frameless & Transparent**: Renders the character cleanly floating over Windows desktop and applications.
+- **Dual Modes**: Edit Mode (draggability, scale 25%–300%, 30/60 FPS toggle, always on top) vs Lock Mode (clean character only).
+- **OS Click-Through**: Allows clicks to pass through to underlying windows; recover via `Ctrl + Shift + D` or System Tray.
+- **System Tray Integration**: Manage visibility, click-through, pause, and closing from the Windows taskbar.
+- Full architectural and operational details are documented in `docs/DESKTOP_CHARACTER.md`.
+

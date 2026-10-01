@@ -224,6 +224,28 @@ HDM.AGENT.4C productizes the viewer into a practical Character Player, integrate
 | **AG4C-7** | Dual Mode Character Player UI | `ViewerControls.tsx` | Clean default Player mode (character, outfit, motion, expression, timeline, auto-motion, fit, fullscreen) with technical sliders organized under Advanced tab. | **PASS** (UI layout verified, 0 TypeScript errors) |
 | **AG4C-8** | Git & Boundary Safety | Repository audit | Zero proprietary Cubism Core binaries, game bundles, or sample models committed to git. | **PASS** (Strict `.gitignore` enforcement) |
 
+---
+
+## Acceptance Gate: HDM.AGENT.5A — Desktop Character Window
+
+HDM.AGENT.5A delivers the Desktop Character Window: a dedicated, transparent, frameless Windows desktop companion mode for HoloDori Live2D models with dual Edit/Lock modes, OS click-through, multi-monitor clamping, System Tray integration, and remote control IPC.
+
+### Mandatory Acceptance Gates (HDM.AGENT.5A)
+
+| Gate ID | Requirement | Verification Method | Pass Criteria | Status |
+|---|---|---|---|---|
+| **AG5A-1** | Baseline & Zero Regression | `cargo test --workspace`, `npm test`, `npm run build`, `cargo clippy` | All 79 Rust tests pass, all 15 frontend unit tests pass, all 12 browser runtime acceptance tests pass, 0 clippy warnings, 0 TS build errors. | **PASS** (79 Rust / 15 JS unit / 12 runtime / 0 warnings) |
+| **AG5A-2** | Dedicated Transparent Desktop Window | Tauri window architecture & CSS | Dedicated `desktop_character` window initialized with `transparent: true, decorations: false, shadow: false`; `.desktop-mode` transparency rules on HTML/body; transparent WebGL canvas. | **PASS** (`commands/desktop.rs`, `App.css`, runtime Test Case 12) |
+| **AG5A-3** | Dual Operation Modes (Edit vs. Lock) | `DesktopCharacterWindow.tsx` | Edit Mode: drag region, scale controls (25% to 300%), 30/60 FPS toggle, always on top toggle, click-through toggle, lock button. Lock Mode: zero chrome, floating character. | **PASS** (`DesktopCharacterWindow.tsx`, `tests/viewer_unit.test.mjs`) |
+| **AG5A-4** | OS-Level Click-Through & Recovery | Windows cursor event management | Click-through passes mouse events directly to background applications; emergency toggle via `Ctrl + Shift + D` or System Tray guarantees instant recovery. | **PASS** (`commands/desktop.rs`, `lib.rs`, `DesktopCharacterWindow.tsx`) |
+| **AG5A-5** | Multi-Monitor Discovery & Clamping | Coordinate bounds validator | Clamps window position so it never restores off-screen; falls back safely to primary monitor bottom-right if coordinates are invalid. | **PASS** (`commands::desktop::tests`, `tests/viewer_unit.test.mjs`) |
+| **AG5A-6** | Performance Throttling & Pause | `ViewerRenderer.ts` animation loop | Target framerate throttling (30 FPS vs 60 FPS) and pause state verified in WebGL rendering loop. | **PASS** (`renderer.ts`, runtime Test Case 10) |
+| **AG5A-7** | Bidirectional Remote Control IPC | Tauri IPC & event bridge | Main Character Player displays "Desktop Active" badge with remote controls (`send_desktop_control`, `desktop-action`, `switch-model`). | **PASS** (`ViewerControls.tsx`, `ViewerPage.tsx`, `commands/desktop.rs`) |
+| **AG5A-8** | 20-Cycle Lifecycle Stress Test | Headless browser stress test | 20 sequential model switch/load/unload cycles run cleanly on transparent canvas without WebGL resource leaks or crashes. | **PASS** (`scripts/test_viewer_runtime.mjs` Test Case 11) |
+| **AG5A-9** | Strict WorkerW Wallpaper Boundary | Architecture audit | Zero WorkerW / Progman / SetParent / wallpaper injection code committed in Phase 5A (strictly reserved for Phase 5B). | **PASS** (Architectural boundary preserved) |
+| **AG5A-10**| Git & Binary Safety | Repository audit | Zero proprietary Cubism Core binaries, game bundles, or sample models committed to git. | **PASS** (Strict `.gitignore` enforcement) |
+
+
 
 
 

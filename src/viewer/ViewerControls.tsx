@@ -78,6 +78,12 @@ interface ViewerControlsProps {
 
   // Diagnostics
   diagnostics: ModelDiagnostics;
+
+  // Desktop Window Controls
+  isDesktopActive?: boolean;
+  onSendToDesktop?: () => void;
+  onCloseDesktop?: () => void;
+  onRemotePlayRandomMotion?: () => void;
 }
 
 const PARAM_CATEGORIES: ('All' | ParameterCategory)[] = [
@@ -141,6 +147,10 @@ export const ViewerControls: React.FC<ViewerControlsProps> = ({
   recentModels,
   onSelectRecentModel,
   diagnostics,
+  isDesktopActive = false,
+  onSendToDesktop,
+  onCloseDesktop,
+  onRemotePlayRandomMotion,
 }) => {
   const [activeTab, setActiveTab] = useState<'motions' | 'expressions' | 'favorites' | 'advanced'>('motions');
   const [paramSearch, setParamSearch] = useState('');
@@ -588,6 +598,65 @@ export const ViewerControls: React.FC<ViewerControlsProps> = ({
           >
             100%
           </button>
+
+          {/* Desktop Character Button */}
+          {onSendToDesktop && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                onClick={isDesktopActive ? onCloseDesktop : onSendToDesktop}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: `1px solid ${isDesktopActive ? '#10b981' : '#3b82f6'}`,
+                  background: isDesktopActive ? 'rgba(16, 185, 129, 0.15)' : '#1e3a8a',
+                  color: isDesktopActive ? '#34d399' : '#93c5fd',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontWeight: 500,
+                }}
+                title={
+                  isDesktopActive
+                    ? 'Desktop Character is Active (Click to Close Desktop Window)'
+                    : 'Send Character to Floating Desktop Window'
+                }
+              >
+                <span>🗔</span>
+                <span>{isDesktopActive ? 'Desktop Active' : 'Send to Desktop'}</span>
+                {isDesktopActive && (
+                  <span
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: '#10b981',
+                      boxShadow: '0 0 6px #10b981',
+                    }}
+                  />
+                )}
+              </button>
+
+              {isDesktopActive && onRemotePlayRandomMotion && (
+                <button
+                  onClick={onRemotePlayRandomMotion}
+                  style={{
+                    padding: '4px 6px',
+                    borderRadius: '6px',
+                    border: '1px solid #334155',
+                    background: '#21252b',
+                    color: '#e2e8f0',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                  }}
+                  title="Play Random Motion on Desktop Window"
+                >
+                  🎲 Desktop Motion
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Fullscreen Button */}
           <button

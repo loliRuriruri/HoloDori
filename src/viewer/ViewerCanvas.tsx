@@ -9,6 +9,7 @@ interface ViewerCanvasProps {
   onCanvasDestroy: () => void;
   onTransformChange?: (transform: ViewportTransform) => void;
   onDoubleClick?: () => void;
+  interactive?: boolean;
 }
 
 export const ViewerCanvas: React.FC<ViewerCanvasProps> = ({
@@ -18,6 +19,7 @@ export const ViewerCanvas: React.FC<ViewerCanvasProps> = ({
   onCanvasDestroy,
   onTransformChange,
   onDoubleClick,
+  interactive = true,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -55,6 +57,7 @@ export const ViewerCanvas: React.FC<ViewerCanvasProps> = ({
 
   // Pointer drag for panning
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!interactive) return;
     if (e.button !== 0 && e.button !== 1) return; // Left or middle click
     isDraggingRef.current = true;
     lastMousePosRef.current = { x: e.clientX, y: e.clientY };
@@ -63,7 +66,7 @@ export const ViewerCanvas: React.FC<ViewerCanvasProps> = ({
     } catch {
       // Ignore
     }
-  }, []);
+  }, [interactive]);
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -103,6 +106,7 @@ export const ViewerCanvas: React.FC<ViewerCanvasProps> = ({
   // Mouse wheel for zooming
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLCanvasElement>) => {
+      if (!interactive) return;
       e.preventDefault();
       if (!renderer) return;
 
@@ -169,7 +173,7 @@ export const ViewerCanvas: React.FC<ViewerCanvasProps> = ({
           width: '100%',
           height: '100%',
           display: 'block',
-          cursor: isDraggingRef.current ? 'grabbing' : 'grab',
+          cursor: !interactive ? 'default' : isDraggingRef.current ? 'grabbing' : 'grab',
           touchAction: 'none',
         }}
       />

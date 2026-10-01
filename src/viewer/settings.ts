@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { PlayerFavorites, RecentModel, ViewerSettings } from './types';
+import { DEFAULT_DESKTOP_SETTINGS, PlayerFavorites, RecentModel, ViewerSettings } from './types';
 
 const STORAGE_KEY_SETTINGS = 'hdm_viewer_settings';
 const STORAGE_KEY_FAVORITES = 'hdm_player_favorites';
@@ -14,6 +14,7 @@ export const DEFAULT_VIEWER_SETTINGS: ViewerSettings = {
   autoMotion: false,
   autoMotionDelaySec: 3.0,
   zoom: 1.0,
+  desktop: { ...DEFAULT_DESKTOP_SETTINGS },
 };
 
 export const DEFAULT_FAVORITES: PlayerFavorites = {
@@ -36,8 +37,16 @@ export async function loadPlayerState(): Promise<PersistedPlayerState> {
   try {
     const raw = await invoke<Partial<PersistedPlayerState>>('load_player_settings');
     if (raw && typeof raw === 'object') {
+      const mergedDesktop = {
+        ...DEFAULT_DESKTOP_SETTINGS,
+        ...((raw.settings && raw.settings.desktop) || {}),
+      };
       return {
-        settings: { ...DEFAULT_VIEWER_SETTINGS, ...(raw.settings || {}) },
+        settings: {
+          ...DEFAULT_VIEWER_SETTINGS,
+          ...(raw.settings || {}),
+          desktop: mergedDesktop,
+        },
         favorites: {
           characters: raw.favorites?.characters || [],
           outfits: raw.favorites?.outfits || [],
@@ -59,7 +68,17 @@ export async function loadPlayerState(): Promise<PersistedPlayerState> {
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
       const s = localStorage.getItem(STORAGE_KEY_SETTINGS);
-      if (s) settings = { ...settings, ...JSON.parse(s) };
+      if (s) {
+        const parsed = JSON.parse(s);
+        settings = {
+          ...settings,
+          ...parsed,
+          desktop: {
+            ...DEFAULT_DESKTOP_SETTINGS,
+            ...(parsed.desktop || {}),
+          },
+        };
+      }
       const f = localStorage.getItem(STORAGE_KEY_FAVORITES);
       if (f) favorites = { ...favorites, ...JSON.parse(f) };
       const r = localStorage.getItem(STORAGE_KEY_RECENT);

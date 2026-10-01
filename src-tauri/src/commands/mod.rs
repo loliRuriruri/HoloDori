@@ -5,6 +5,13 @@ use std::sync::Arc;
 use tauri::command;
 use tauri::Emitter;
 
+pub mod desktop;
+pub use desktop::{
+    close_desktop_window, get_available_monitors, get_desktop_window_state, open_desktop_window,
+    send_desktop_control, set_desktop_always_on_top, set_desktop_bounds, set_desktop_click_through,
+    DesktopState,
+};
+
 use crate::domain::library::batch::BatchBuildManager;
 use crate::domain::types::{
     BatchBuildReport, BuildStatus, CharacterLibrary, ConflictPolicy, MatchedPair,

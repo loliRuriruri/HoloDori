@@ -31,6 +31,16 @@ body {
   height: 100vh;
 }
 
+/* Desktop Character Window (Transparent Mode) */
+html.desktop-mode,
+body.desktop-mode,
+body.desktop-mode #root {
+  background: transparent !important;
+  background-color: transparent !important;
+  overflow: hidden !important;
+  user-select: none !important;
+}
+
 .app-container {
   display: flex;
   flex-direction: column;

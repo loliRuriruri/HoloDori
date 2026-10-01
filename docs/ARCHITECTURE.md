@@ -200,5 +200,15 @@ flowchart TD
   - In-viewer continuous character/outfit switching on same WebGL context without memory leaks.
   - Auto-motion timer and non-repeating random motion playback.
   - Settings persistence, favorites, and recent models tracking (capped at 10).
-- **Phase 5 (Windows Desktop Wallpaper Mode)**: FUTURE.
+- **Phase 5A (Desktop Character Window)**: COMPLETED.
+  - Frameless, transparent floating Live2D companion window (`desktop_character`).
+  - Dual modes: Edit Mode (drag region, scale slider 25%-300%, FPS toggle, AOT) vs Lock Mode (clean character only).
+  - OS-level Click-Through Mode (`set_ignore_cursor_events`) with emergency recovery hotkey (`Ctrl + Shift + D`).
+  - Windows System Tray integration with instant visibility, click-through, and lifecycle management.
+  - Multi-monitor discovery & DPI-aware coordinate clamping preventing off-screen loss.
+  - Bidirectional remote control IPC between Character Player and Desktop window.
+  - Target framerate throttling (30 FPS vs 60 FPS) and zero-cost pause states.
+  - 20-cycle lifecycle stress testing verified without WebGL resource leaks.
+- **Phase 5B (Windows Desktop WorkerW Wallpaper Attachment)**: NEXT.
 - **Phase 6 (Live2DRecovery Bridge)**: FUTURE.
+

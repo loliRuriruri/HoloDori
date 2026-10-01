@@ -83,6 +83,34 @@ export interface ExpressionPlayInfo {
   name: string;
 }
 
+export interface DesktopWindowSettings {
+  x?: number;
+  y?: number;
+  width: number;
+  height: number;
+  scale: number;
+  alwaysOnTop: boolean;
+  clickThrough: boolean;
+  editMode: boolean;
+  fps: number;
+  performanceMode: 'quality' | 'balanced' | 'low_power';
+  hideDuringFullscreen: boolean;
+  paused: boolean;
+}
+
+export const DEFAULT_DESKTOP_SETTINGS: DesktopWindowSettings = {
+  width: 500,
+  height: 700,
+  scale: 1.0,
+  alwaysOnTop: true,
+  clickThrough: false,
+  editMode: false,
+  fps: 60,
+  performanceMode: 'balanced',
+  hideDuringFullscreen: false,
+  paused: false,
+};
+
 export interface ViewerSettings {
   mode: ViewerMode;
   background: ViewerBackground;
@@ -94,6 +122,7 @@ export interface ViewerSettings {
   zoom: number;
   lastCharacterId?: string;
   lastOutfitId?: string;
+  desktop?: DesktopWindowSettings;
 }
 
 export interface PlayerFavorites {

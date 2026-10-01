@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import {
   ModelPackageTarget,
   ViewerStatus,
@@ -73,6 +74,7 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({
   const [favorites, setFavorites] = useState<PlayerFavorites>(DEFAULT_FAVORITES);
   const [recentModels, setRecentModels] = useState<RecentModel[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isDesktopActive, setIsDesktopActive] = useState(false);
 
   // Animations & Expressions State
   const [animations, setAnimations] = useState<ModelAnimationMetadata | null>(null);
@@ -157,6 +159,63 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({
     } else {
       document.exitFullscreen().catch(() => {});
     }
+  }, []);
+
+  // Check and listen to Desktop Window state
+  useEffect(() => {
+    const checkDesktop = async () => {
+      try {
+        const state = await invoke<{ is_open: boolean }>('get_desktop_window_state');
+        setIsDesktopActive(state?.is_open ?? false);
+      } catch {
+        // Fallback in tests
+      }
+    };
+    checkDesktop();
+
+    const unlistenPromise = listen<{ is_open: boolean }>('desktop-state-changed', (e) => {
+      setIsDesktopActive(e.payload?.is_open ?? false);
+    });
+
+    return () => {
+      unlistenPromise.then((f) => f()).catch(() => {});
+    };
+  }, []);
+
+  const handleSendToDesktop = useCallback(async () => {
+    try {
+      const ds = playerSettings.desktop;
+      await invoke('open_desktop_window', {
+        req: {
+          character_id: currentTarget.characterId,
+          outfit_id: currentTarget.outfitId,
+          package_dir: currentTarget.packageDir,
+          display_name: currentTarget.displayName,
+          x: ds?.x,
+          y: ds?.y,
+          width: ds?.width,
+          height: ds?.height,
+          always_on_top: ds?.alwaysOnTop,
+          click_through: ds?.clickThrough,
+        },
+      });
+      setIsDesktopActive(true);
+    } catch (err) {
+      console.error('[ViewerPage] Failed to send model to desktop:', err);
+    }
+  }, [currentTarget, playerSettings.desktop]);
+
+  const handleCloseDesktop = useCallback(async () => {
+    try {
+      await invoke('close_desktop_window');
+      setIsDesktopActive(false);
+    } catch (err) {
+      console.error('[ViewerPage] Failed to close desktop window:', err);
+    }
+  }, []);
+
+  const handleRemotePlayRandomMotion = useCallback(() => {
+    invoke('send_desktop_control', { action: 'random_motion', payload: null }).catch(() => {});
   }, []);
 
   // Available Characters and Outfits derived from library
@@ -828,6 +887,10 @@ export const ViewerPage: React.FC<ViewerPageProps> = ({
         recentModels={recentModels}
         onSelectRecentModel={handleSelectRecentModel}
         diagnostics={diagnostics}
+        isDesktopActive={isDesktopActive}
+        onSendToDesktop={handleSendToDesktop}
+        onCloseDesktop={handleCloseDesktop}
+        onRemotePlayRandomMotion={handleRemotePlayRandomMotion}
       />
 
       {/* Main Viewport */}

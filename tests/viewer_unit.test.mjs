@@ -296,3 +296,116 @@ test('DEFAULT_VIEWER_SETTINGS defines authentic production player baseline', () 
   assert.equal(DEFAULT_VIEWER_SETTINGS.autoMotion, false);
   assert.equal(DEFAULT_VIEWER_SETTINGS.autoMotionDelaySec, 3.0);
 });
+
+// 3. Desktop Mode & Settings Unit Tests
+const DEFAULT_DESKTOP_SETTINGS = {
+  width: 500,
+  height: 700,
+  scale: 1.0,
+  alwaysOnTop: true,
+  clickThrough: false,
+  editMode: false,
+  fps: 60,
+  performanceMode: 'balanced',
+  hideDuringFullscreen: false,
+  paused: false,
+};
+
+function clampDesktopScale(val) {
+  return Math.min(Math.max(val, 0.25), 3.0);
+}
+
+function clampWindowPosition(x, y, width, height, monitors) {
+  if (!monitors || monitors.length === 0) {
+    return { x: Math.max(x, 0), y: Math.max(y, 0) };
+  }
+  const minMargin = 60.0;
+  let overlaps = false;
+  for (const m of monitors) {
+    const ox = x < m.x + m.width - minMargin && x + width > m.x + minMargin;
+    const oy = y < m.y + m.height - minMargin && y + height > m.y + minMargin;
+    if (ox && oy) {
+      overlaps = true;
+      break;
+    }
+  }
+  if (overlaps) {
+    return { x, y };
+  }
+  const primary = monitors.find((m) => m.is_primary) || monitors[0];
+  const safeX = Math.max(primary.x + primary.width - width - 40, primary.x);
+  const safeY = Math.max(primary.y + primary.height - height - 60, primary.y);
+  return { x: safeX, y: safeY };
+}
+
+function migratePlayerSettings(raw) {
+  const settings = raw.settings || {};
+  return {
+    ...DEFAULT_VIEWER_SETTINGS,
+    ...settings,
+    desktop: {
+      ...DEFAULT_DESKTOP_SETTINGS,
+      ...(settings.desktop || {}),
+    },
+  };
+}
+
+test('DEFAULT_DESKTOP_SETTINGS defines robust frameless desktop baseline', () => {
+  assert.equal(DEFAULT_DESKTOP_SETTINGS.width, 500);
+  assert.equal(DEFAULT_DESKTOP_SETTINGS.height, 700);
+  assert.equal(DEFAULT_DESKTOP_SETTINGS.scale, 1.0);
+  assert.equal(DEFAULT_DESKTOP_SETTINGS.fps, 60);
+  assert.equal(DEFAULT_DESKTOP_SETTINGS.alwaysOnTop, true);
+  assert.equal(DEFAULT_DESKTOP_SETTINGS.clickThrough, false);
+  assert.equal(DEFAULT_DESKTOP_SETTINGS.editMode, false);
+  assert.equal(DEFAULT_DESKTOP_SETTINGS.paused, false);
+});
+
+test('migratePlayerSettings correctly upgrades legacy state missing desktop field', () => {
+  const legacy = {
+    settings: {
+      mode: 'player',
+      zoom: 1.5,
+      autoMotion: true,
+    },
+  };
+  const migrated = migratePlayerSettings(legacy);
+  assert.equal(migrated.zoom, 1.5);
+  assert.equal(migrated.autoMotion, true);
+  assert.ok(migrated.desktop);
+  assert.equal(migrated.desktop.fps, 60);
+  assert.equal(migrated.desktop.scale, 1.0);
+  assert.equal(migrated.desktop.alwaysOnTop, true);
+});
+
+test('clampDesktopScale enforces [0.25, 3.0] scale limits', () => {
+  assert.equal(clampDesktopScale(0.1), 0.25);
+  assert.equal(clampDesktopScale(0.25), 0.25);
+  assert.equal(clampDesktopScale(1.0), 1.0);
+  assert.equal(clampDesktopScale(2.5), 2.5);
+  assert.equal(clampDesktopScale(3.0), 3.0);
+  assert.equal(clampDesktopScale(5.0), 3.0);
+});
+
+test('clampWindowPosition preserves in-bounds window and recovers off-screen coordinates', () => {
+  const monitors = [
+    { name: 'Display 1', x: 0, y: 0, width: 1920, height: 1080, is_primary: true },
+    { name: 'Display 2', x: 1920, y: 0, width: 1920, height: 1080, is_primary: false },
+  ];
+
+  // In primary monitor
+  const inPrimary = clampWindowPosition(200, 200, 500, 700, monitors);
+  assert.equal(inPrimary.x, 200);
+  assert.equal(inPrimary.y, 200);
+
+  // In secondary monitor
+  const inSecondary = clampWindowPosition(2200, 150, 500, 700, monitors);
+  assert.equal(inSecondary.x, 2200);
+  assert.equal(inSecondary.y, 150);
+
+  // Completely off-screen (-9999, -9999): must recover to bottom-right of primary display
+  const offscreen = clampWindowPosition(-9999, -9999, 500, 700, monitors);
+  assert.ok(offscreen.x >= 0 && offscreen.x <= 1920, `Recovered x ${offscreen.x} must be on primary monitor`);
+  assert.ok(offscreen.y >= 0 && offscreen.y <= 1080, `Recovered y ${offscreen.y} must be on primary monitor`);
+});
+

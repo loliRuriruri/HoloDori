@@ -14,6 +14,8 @@ export class ViewerRenderer {
   private _model: Live2DModelWrapper | null = null;
   private _animFrameId: number | null = null;
   private _lastTime = 0;
+  private _lastRenderTime = 0;
+  private _targetFps = 0; // 0 = unthrottled (native vsync), or e.g. 30, 60
   private _isPaused = false;
   private _fps = 0;
   private _frameCount = 0;
@@ -159,9 +161,30 @@ export class ViewerRenderer {
     }
   }
 
+  public setTargetFps(fps: number): void {
+    this._targetFps = fps > 0 ? fps : 0;
+  }
+
+  public getTargetFps(): number {
+    return this._targetFps;
+  }
+
+  public setPaused(paused: boolean): void {
+    this._isPaused = paused;
+    if (!paused) {
+      this._lastTime = performance.now();
+      this._lastRenderTime = performance.now();
+    }
+  }
+
+  public isPaused(): boolean {
+    return this._isPaused;
+  }
+
   public start(): void {
     if (this._animFrameId !== null) return;
     this._lastTime = performance.now();
+    this._lastRenderTime = this._lastTime;
     this._fpsLastTime = this._lastTime;
     this._frameCount = 0;
     this._isPaused = false;
@@ -171,6 +194,13 @@ export class ViewerRenderer {
 
       if (this._isPaused) return;
 
+      if (this._targetFps > 0) {
+        const minInterval = 1000 / this._targetFps;
+        if (now - this._lastRenderTime < minInterval - 2.0) {
+          return;
+        }
+      }
+
       this._frameCount++;
       if (now - this._fpsLastTime >= 500) {
         this._fps = Math.round((this._frameCount * 1000) / (now - this._fpsLastTime));
@@ -178,8 +208,9 @@ export class ViewerRenderer {
         this._fpsLastTime = now;
       }
 
-      const deltaMs = now - this._lastTime;
+      const deltaMs = this._lastRenderTime > 0 ? (now - this._lastRenderTime) : (now - this._lastTime);
       this._lastTime = now;
+      this._lastRenderTime = now;
       // Clamp delta time to max 100ms to avoid huge step after pauses
       const deltaSec = Math.min(Math.max(deltaMs / 1000.0, 0.001), 0.1);
 
