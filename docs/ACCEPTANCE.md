@@ -128,4 +128,25 @@ HDM.AGENT.2 elevates HoloDori Live2D Manager into a desktop character library an
 | **AG2-14**| Source Immutability | Pre/post SHA-256 integrity | All source files in input directory remain bit-for-bit unmutated. | **PASS** |
 | **AG2-15**| Zero Copyrighted Assets | `git status` & `git ls-files` audit | Zero game assets or proprietary textures committed to repository. | **PASS** |
 
+---
+
+## Acceptance Gate: HDM.AGENT.3B — Integrated HoloDori Importer
+
+HDM.AGENT.3B integrates direct Steam game detection, master asset catalog (`octocacheevai`) parsing, raw bundle acquisition with caching, and pure-Rust UnityFS extraction into the HoloDori Live2D Manager desktop application.
+
+### Mandatory Acceptance Gates (HDM.AGENT.3B)
+
+| Gate ID | Requirement | Verification Method | Pass Criteria | Status |
+|---|---|---|---|---|
+| **AG3B-1** | Zero Regression | `cargo test --workspace` & `npm run build` | All 47 existing AGENT.1–3A tests remain 100% green; zero frontend/backend compiler errors. | **PASS** (59/59 total tests pass) |
+| **AG3B-2** | Steam Installation Detection | Multi-strategy detector | Auto-detects Steam AppID 4282500 via Windows Registry, `libraryfolders.vdf`, default paths; provides manual folder validation fallback. | **PASS** (`test_steam_libraryfolders_vdf_parsing`, `test_steam_detection_synthetic_unicode_and_spaces`) |
+| **AG3B-3** | Octocache Decryption & Parsing | Pure-Rust AES-128-CBC + Protobuf | Decrypts Revision 20 `octocacheevai`, extracts master catalog, filters to `live2d_mdl_*`, and parses Character/Style tokens. | **PASS** (`test_synthetic_octocache_roundtrip`, `test_importer_catalog_from_synthetic_octocache`) |
+| **AG3B-4** | Bundle Acquisition & Integrity | Streaming HTTP + MD5 check | Downloads raw bundles from CDN template with streaming MD5 hashing and atomic `.part` replacement; rejects corrupted payloads. | **PASS** (`test_corrupted_md5`, `test_hash_mask_and_bundle_deobfuscation`) |
+| **AG3B-5** | Local Cache Management | `%LOCALAPPDATA%` bundle cache | Stores raw bundles, skips redownloading verified cached bundles, supports cache clearing and disk usage inspection. | **PASS** (`test_importer_cache_management`) |
+| **AG3B-6** | Pure-Rust UnityFS & Asset Extraction | `unity-rs-core` (Unity 6000.3.15f1) | Deobfuscates 256-byte rolling XOR header, decompresses UnityFS blocks, extracts `MonoBehaviour` MOC3 bytes (100% bit-for-bit SHA-256 match) and decodes `Texture2D` atlas RGBA32 into PNG. | **PASS** (`test_real_bundle_extraction_if_cached`) |
+| **AG3B-7** | Pipeline Integration & Package Generation | Coordinator to `ConversionPipeline` | Feeds extracted MOC3 and textures into existing PackageBuilder, generating standard Cubism runtime packages (`.model3.json`, `.moc3`, `textures/texture_00.png`) with Level 1 and Level 2 validation. | **PASS** (`test_importer_coordinator_end_to_end_if_cached`) |
+| **AG3B-8** | Fault Isolation & Cancellation | Partial failure & cancellation handling | Network/extraction failure on model $N$ does not corrupt or abort model $N+1$; cancellation cleanly halts at model boundary. | **PASS** (Atomic cancellation token, per-model error catching in `ImporterCoordinator`) |
+| **AG3B-9** | Complete User Interface | Source Mode navigation & Importer UI | Provides Source Mode toggle ("Local Resource Files" vs "HoloDori Installation"), Steam install status banner, catalog table with search/filters, bundle cache management, live progress modal, and post-import Library switch. | **PASS** (`ImporterView.tsx`, verified with `npm run build`) |
+| **AG3B-10**| Safe Read-Only Operation & Clean Repo | Repository & process audit | Zero writes or modifications to Steam game files; zero proprietary game bundles or assets committed to git. | **PASS** (`git status` audit) |
+
 

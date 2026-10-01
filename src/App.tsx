@@ -5,6 +5,7 @@ import { listen } from '@tauri-apps/api/event';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import './App.css';
+import { ImporterView } from './components/ImporterView';
 import {
   CharacterLibrary,
   OutfitEntry,
@@ -17,6 +18,9 @@ import {
 } from './types';
 
 export const App: React.FC = () => {
+  // Source Mode: 'local' (Local Resource Files) vs 'game' (HoloDori Installation)
+  const [sourceMode, setSourceMode] = useState<'local' | 'game'>('game');
+
   // Source & Settings
   const [sourcePath, setSourcePath] = useState<string>('');
   const [outputDir, setOutputDir] = useState<string>('');
@@ -339,36 +343,72 @@ export const App: React.FC = () => {
         <div className="brand-title">
           <span className="brand-logo">🎭</span>
           <span>HoloDori Live2D Manager</span>
-          <span className="brand-badge">AGENT.2 LIBRARY</span>
+          <span className="brand-badge">AGENT.3B</span>
         </div>
-        <div className="header-actions">
-          <div className="output-config">
-            <span className="output-label">Output:</span>
-            <input
-              type="text"
-              className="output-input"
-              value={outputDir}
-              onChange={(e) => setOutputDir(e.target.value)}
-              placeholder="Output directory..."
-            />
-            <button className="btn-secondary" onClick={handlePickOutputDir} title="Choose Output Directory">
-              📁
-            </button>
-            <select
-              className="select-policy"
-              value={conflictPolicy}
-              onChange={(e) => setConflictPolicy(e.target.value as ConflictPolicy)}
-              title="Conflict Policy"
-            >
-              <option value="Skip">Skip Existing</option>
-              <option value="UniqueSuffix">Unique Suffix</option>
-              <option value="Overwrite">Overwrite (Explicit)</option>
-            </select>
+
+        {/* SOURCE MODE TABS */}
+        <div className="nav-tabs">
+          <button
+            className={`nav-tab ${sourceMode === 'local' ? 'active' : ''}`}
+            onClick={() => setSourceMode('local')}
+          >
+            <span>📁</span>
+            <span>Local Resource Files</span>
+          </button>
+          <button
+            className={`nav-tab ${sourceMode === 'game' ? 'active' : ''}`}
+            onClick={() => setSourceMode('game')}
+          >
+            <span>🎮</span>
+            <span>HoloDori Installation</span>
+            <span className="tab-badge">AUTO</span>
+          </button>
+        </div>
+
+        {sourceMode === 'local' && (
+          <div className="header-actions">
+            <div className="output-config">
+              <span className="output-label">Output:</span>
+              <input
+                type="text"
+                className="output-input"
+                value={outputDir}
+                onChange={(e) => setOutputDir(e.target.value)}
+                placeholder="Output directory..."
+              />
+              <button className="btn-secondary" onClick={handlePickOutputDir} title="Choose Output Directory">
+                📁
+              </button>
+              <select
+                className="select-policy"
+                value={conflictPolicy}
+                onChange={(e) => setConflictPolicy(e.target.value as ConflictPolicy)}
+                title="Conflict Policy"
+              >
+                <option value="Skip">Skip Existing</option>
+                <option value="UniqueSuffix">Unique Suffix</option>
+                <option value="Overwrite">Overwrite (Explicit)</option>
+              </select>
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
-      {/* TOP CONTROL BAR */}
+      {sourceMode === 'game' ? (
+        <ImporterView
+          outputDir={outputDir}
+          setOutputDir={setOutputDir}
+          conflictPolicy={conflictPolicy}
+          setConflictPolicy={setConflictPolicy}
+          onNavigateToLibrary={(importedDir) => {
+            setSourcePath(importedDir);
+            setSourceMode('local');
+            triggerScan(importedDir, false);
+          }}
+        />
+      ) : (
+        <>
+          {/* TOP CONTROL BAR */}
       <div className="top-control-bar">
         <div className="source-row">
           <button className="btn-primary" onClick={handlePickSourceFolder} disabled={isScanning || isBuilding}>
@@ -810,7 +850,9 @@ export const App: React.FC = () => {
           </button>
         </div>
       </footer>
-    </div>
-  );
+      </>
+    )}
+  </div>
+);
 };
 export default App;

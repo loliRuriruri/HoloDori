@@ -23,6 +23,20 @@ impl Default for BatchState {
     }
 }
 
+pub struct ImporterState {
+    pub coordinator: Arc<crate::importer::ImporterCoordinator>,
+    pub detected_steam: std::sync::Mutex<Option<crate::importer::SteamDetectionResult>>,
+}
+
+impl Default for ImporterState {
+    fn default() -> Self {
+        Self {
+            coordinator: Arc::new(crate::importer::ImporterCoordinator::new()),
+            detected_steam: std::sync::Mutex::new(None),
+        }
+    }
+}
+
 #[command]
 pub async fn scan_inputs(paths: Vec<String>) -> Result<Vec<MatchedPair>, String> {
     let path_bufs: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).collect();
@@ -187,4 +201,89 @@ pub async fn get_default_output_dir() -> Result<String, String> {
     let current = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let default_out = current.join("output");
     Ok(default_out.to_string_lossy().to_string())
+}
+
+#[command]
+pub async fn detect_game_install(
+    state: tauri::State<'_, ImporterState>,
+) -> Result<crate::importer::SteamDetectionResult, String> {
+    let res = crate::importer::ImporterCoordinator::detect_steam();
+    let mut lock = state.detected_steam.lock().map_err(|e| e.to_string())?;
+    *lock = Some(res.clone());
+    Ok(res)
+}
+
+#[command]
+pub async fn set_game_install_path(
+    path: String,
+    state: tauri::State<'_, ImporterState>,
+) -> Result<crate::importer::SteamDetectionResult, String> {
+    let p = PathBuf::from(&path);
+    let res = crate::importer::ImporterCoordinator::validate_game_path(&p);
+    let mut lock = state.detected_steam.lock().map_err(|e| e.to_string())?;
+    *lock = Some(res.clone());
+    Ok(res)
+}
+
+#[command]
+pub async fn load_game_catalog(
+    octocache_path: Option<String>,
+    state: tauri::State<'_, ImporterState>,
+) -> Result<Vec<crate::importer::ModelCatalogEntry>, String> {
+    let target_octo = if let Some(p) = octocache_path {
+        PathBuf::from(p)
+    } else {
+        let lock = state.detected_steam.lock().map_err(|e| e.to_string())?;
+        let detected = lock.as_ref().ok_or_else(|| {
+            "No Steam game detected. Please run detection or specify path.".to_string()
+        })?;
+        let octo_str = detected
+            .octocache_path
+            .as_ref()
+            .ok_or_else(|| "No octocacheevai located in game folder.".to_string())?;
+        PathBuf::from(octo_str)
+    };
+
+    state
+        .coordinator
+        .load_catalog(&target_octo)
+        .map_err(|e| e.to_string())
+}
+
+#[command]
+pub async fn import_models(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, ImporterState>,
+    entries: Vec<crate::importer::ModelCatalogEntry>,
+    output_dir: String,
+    conflict_policy: ConflictPolicy,
+) -> Result<crate::importer::ImportExecutionResult, String> {
+    let dest = PathBuf::from(&output_dir);
+    let app_handle = app.clone();
+    let coordinator = state.coordinator.clone();
+
+    coordinator
+        .import_models(&entries, &dest, conflict_policy, move |progress| {
+            let _ = app_handle.emit("import-progress", &progress);
+        })
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[command]
+pub async fn cancel_import(state: tauri::State<'_, ImporterState>) -> Result<(), String> {
+    state.coordinator.cancel();
+    Ok(())
+}
+
+#[command]
+pub async fn get_import_cache_stats(
+    state: tauri::State<'_, ImporterState>,
+) -> Result<crate::importer::CacheStats, String> {
+    Ok(state.coordinator.cache_stats())
+}
+
+#[command]
+pub async fn clear_import_cache(state: tauri::State<'_, ImporterState>) -> Result<u64, String> {
+    state.coordinator.clear_cache().map_err(|e| e.to_string())
 }

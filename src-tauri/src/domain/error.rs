@@ -20,6 +20,9 @@ pub enum ErrorCode {
     ErrSourceIntegrityFailed,
     ErrMaxSizeExceeded,
     ErrValidationFailed,
+    ErrCorruptedData,
+    ErrCancelled,
+    ErrImporterFailed,
 }
 
 impl ErrorCode {
@@ -41,6 +44,9 @@ impl ErrorCode {
             ErrorCode::ErrSourceIntegrityFailed => "ERR_SOURCE_INTEGRITY_FAILED",
             ErrorCode::ErrMaxSizeExceeded => "ERR_MAX_SIZE_EXCEEDED",
             ErrorCode::ErrValidationFailed => "ERR_VALIDATION_FAILED",
+            ErrorCode::ErrCorruptedData => "ERR_CORRUPTED_DATA",
+            ErrorCode::ErrCancelled => "ERR_CANCELLED",
+            ErrorCode::ErrImporterFailed => "ERR_IMPORTER_FAILED",
         }
     }
 }
@@ -140,9 +146,27 @@ pub enum DomainError {
         stage: String,
         reason: String,
     },
+
+    #[error("[{code}] Importer error: {message}", code = .code.as_str())]
+    ImporterError { code: ErrorCode, message: String },
 }
 
 impl DomainError {
+    pub fn importer(code: ErrorCode, message: impl Into<String>) -> Self {
+        DomainError::ImporterError {
+            code,
+            message: message.into(),
+        }
+    }
+
+    pub fn io(path: impl Into<PathBuf>, message: impl Into<String>) -> Self {
+        DomainError::IoError {
+            code: ErrorCode::ErrIo,
+            path: path.into(),
+            message: message.into(),
+        }
+    }
+
     pub fn code(&self) -> ErrorCode {
         match self {
             DomainError::IoError { code, .. } => *code,
@@ -161,6 +185,7 @@ impl DomainError {
             DomainError::SourceIntegrityFailed { code, .. } => *code,
             DomainError::MaxSizeExceeded { code, .. } => *code,
             DomainError::ValidationFailed { code, .. } => *code,
+            DomainError::ImporterError { code, .. } => *code,
         }
     }
 }

@@ -131,3 +131,78 @@ export interface BatchProgress {
   status: string;
 }
 
+export type SteamDetectionSource =
+  | 'registry'
+  | 'library_folders'
+  | 'common_default'
+  | 'manual_fallback';
+
+export interface SteamDetectionResult {
+  found: boolean;
+  install_path: string | null;
+  octocache_path: string | null;
+  source: SteamDetectionSource | null;
+  message: string;
+}
+
+export interface ModelCatalogEntry {
+  asset_name: string;
+  object_name: string;
+  character_id: string;
+  style: string;
+  outfit_token: string;
+  size_bytes: number;
+  md5: string;
+  is_cached: boolean;
+}
+
+export type ImportPhase =
+  | 'idle'
+  | 'downloading'
+  | 'verifying'
+  | 'extracting'
+  | 'building_manifest'
+  | 'validating'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export interface ImportProgress {
+  total_models: number;
+  current_model_index: number;
+  current_model_name: string;
+  phase: ImportPhase;
+  bytes_received: number;
+  bytes_total: number;
+  overall_percentage: number;
+  error_message: string | null;
+}
+
+export interface ImportedModelSummary {
+  asset_name: string;
+  character_id: string;
+  outfit_id: string;
+  moc3_file: string;
+  textures: string[];
+  manifest_file: string;
+  output_dir: string;
+}
+
+export interface FailedModelSummary {
+  asset_name: string;
+  error: string;
+}
+
+export interface ImportExecutionResult {
+  succeeded: ImportedModelSummary[];
+  failed: FailedModelSummary[];
+  total_processed: number;
+  cancelled: boolean;
+}
+
+export interface CacheStats {
+  cached_bundles_count: number;
+  total_bytes: number;
+  cache_directory: string;
+}
+
