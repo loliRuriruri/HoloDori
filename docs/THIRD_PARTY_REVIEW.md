@@ -34,11 +34,18 @@ All application dependencies are audited permissive open-source packages:
   - `thiserror` (Apache-2.0 / MIT)
   - `tracing`, `tracing-subscriber` (MIT)
   - `regex` (Apache-2.0 / MIT)
-  - `sha2` (Apache-2.0 / MIT)
+  - `sha2`, `md-5` (Apache-2.0 / MIT)
   - `tempfile` (Apache-2.0 / MIT)
   - `walkdir` (Apache-2.0 / MIT / Unlicense)
+  - `unity-rs-core` (MIT, `https://github.com/seiunx-dev/unity-rs`)
+    - *Purpose*: Pure-Rust UnityFS bundle decompression and serialized asset reading (Cubism MOC3 bytes and Texture2D atlas decoding).
+    - *Notice Obligations*: Preserves MIT copyright notice (`Copyright (c) 2024 seiunx-dev`) in distribution releases. Zero proprietary or unlicensed code copied.
+  - `reqwest`, `futures-util` (Apache-2.0 / MIT)
+    - *Purpose*: High-performance asynchronous streaming HTTP/HTTPS client for CDN bundle retrieval with MD5 verification.
+  - `aes`, `cbc` (Apache-2.0 / MIT)
+    - *Purpose*: Pure-Rust AES-128-CBC decryption of master asset catalog (`octocacheevai`).
 - **Frontend**:
   - `react`, `react-dom` (MIT)
   - `vite` (MIT)
   - `typescript` (Apache-2.0)
-  - `@tauri-apps/api` (Apache-2.0 / MIT)
+  - `@tauri-apps/api`, `@tauri-apps/plugin-dialog`, `@tauri-apps/plugin-opener` (Apache-2.0 / MIT)

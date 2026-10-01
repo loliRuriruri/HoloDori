@@ -4,8 +4,12 @@ use tracing::{debug, info, warn};
 use super::types::{SteamDetectionResult, SteamDetectionSource};
 
 const HOLODORI_APP_ID: &str = "4282500";
-const GAME_DIR_NAME: &str = "hololive Dreams";
-const DATA_DIR_NAME: &str = "hololive Dreams_Data";
+const GAME_DIR_CANDIDATES: &[&str] = &["hololiveDreams", "hololive Dreams", "hololive-Dreams"];
+const DATA_DIR_CANDIDATES: &[&str] = &[
+    "hololive-Dreams_Data",
+    "hololive Dreams_Data",
+    "hololiveDreams_Data",
+];
 const OCTOCACHE_FILENAME: &str = "octocacheevai";
 
 pub struct SteamDetector;
@@ -46,22 +50,56 @@ impl SteamDetector {
                 if let Ok(vdf_content) = std::fs::read_to_string(&vdf_path) {
                     let libraries = Self::parse_library_folders_vdf(&vdf_content);
                     for lib in libraries {
-                        let candidate = lib.join("steamapps").join("common").join(GAME_DIR_NAME);
-                        if let Some(octo_path) = Self::find_octocache_in_game_dir(&candidate) {
-                            info!(
-                                "Found HoloDori via libraryfolders.vdf in {}",
-                                candidate.display()
-                            );
-                            return SteamDetectionResult {
-                                found: true,
-                                install_path: Some(candidate.to_string_lossy().to_string()),
-                                octocache_path: Some(octo_path.to_string_lossy().to_string()),
-                                source: Some(SteamDetectionSource::LibraryFolders),
-                                message: format!(
-                                    "Discovered installation via Steam library folder ({})",
-                                    lib.display()
-                                ),
-                            };
+                        // 2a. Check official Steam appmanifest_4282500.acf in library
+                        let acf_path = lib
+                            .join("steamapps")
+                            .join(format!("appmanifest_{HOLODORI_APP_ID}.acf"));
+                        if acf_path.is_file() {
+                            if let Ok(acf_content) = std::fs::read_to_string(&acf_path) {
+                                if let Some(installdir) = Self::parse_acf_installdir(&acf_content) {
+                                    let candidate =
+                                        lib.join("steamapps").join("common").join(&installdir);
+                                    if let Some(octo_path) =
+                                        Self::find_octocache_in_game_dir(&candidate)
+                                    {
+                                        info!(
+                                            "Found HoloDori via Steam appmanifest in {}",
+                                            candidate.display()
+                                        );
+                                        return SteamDetectionResult {
+                                            found: true,
+                                            install_path: Some(candidate.to_string_lossy().to_string()),
+                                            octocache_path: Some(octo_path.to_string_lossy().to_string()),
+                                            source: Some(SteamDetectionSource::LibraryFolders),
+                                            message: format!(
+                                                "Discovered installation via Steam appmanifest ({})",
+                                                lib.display()
+                                            ),
+                                        };
+                                    }
+                                }
+                            }
+                        }
+
+                        // 2b. Check known candidate directory names in common/
+                        for dir_name in GAME_DIR_CANDIDATES {
+                            let candidate = lib.join("steamapps").join("common").join(dir_name);
+                            if let Some(octo_path) = Self::find_octocache_in_game_dir(&candidate) {
+                                info!(
+                                    "Found HoloDori via libraryfolders.vdf in {}",
+                                    candidate.display()
+                                );
+                                return SteamDetectionResult {
+                                    found: true,
+                                    install_path: Some(candidate.to_string_lossy().to_string()),
+                                    octocache_path: Some(octo_path.to_string_lossy().to_string()),
+                                    source: Some(SteamDetectionSource::LibraryFolders),
+                                    message: format!(
+                                        "Discovered installation via Steam library folder ({})",
+                                        lib.display()
+                                    ),
+                                };
+                            }
                         }
                     }
                 }
@@ -70,29 +108,31 @@ impl SteamDetector {
 
         // 3. Check well-known default locations across drives C..H
         for drive in ["C", "D", "E", "F", "G", "H"] {
-            let candidates = [
-                format!(r"{drive}:\Program Files (x86)\Steam\steamapps\common\{GAME_DIR_NAME}"),
-                format!(r"{drive}:\Program Files\Steam\steamapps\common\{GAME_DIR_NAME}"),
-                format!(r"{drive}:\SteamLibrary\steamapps\common\{GAME_DIR_NAME}"),
-                format!(r"{drive}:\Steam\steamapps\common\{GAME_DIR_NAME}"),
-                format!(r"{drive}:\Games\Steam\steamapps\common\{GAME_DIR_NAME}"),
-            ];
+            for dir_name in GAME_DIR_CANDIDATES {
+                let candidates = [
+                    format!(r"{drive}:\Program Files (x86)\Steam\steamapps\common\{dir_name}"),
+                    format!(r"{drive}:\Program Files\Steam\steamapps\common\{dir_name}"),
+                    format!(r"{drive}:\SteamLibrary\steamapps\common\{dir_name}"),
+                    format!(r"{drive}:\Steam\steamapps\common\{dir_name}"),
+                    format!(r"{drive}:\Games\Steam\steamapps\common\{dir_name}"),
+                ];
 
-            for candidate_str in candidates {
-                let candidate = PathBuf::from(candidate_str);
-                if let Some(octo_path) = Self::find_octocache_in_game_dir(&candidate) {
-                    info!(
-                        "Found HoloDori in common default path: {}",
-                        candidate.display()
-                    );
-                    return SteamDetectionResult {
-                        found: true,
-                        install_path: Some(candidate.to_string_lossy().to_string()),
-                        octocache_path: Some(octo_path.to_string_lossy().to_string()),
-                        source: Some(SteamDetectionSource::CommonDefault),
-                        message: "Discovered installation in standard Steam library path"
-                            .to_string(),
-                    };
+                for candidate_str in candidates {
+                    let candidate = PathBuf::from(candidate_str);
+                    if let Some(octo_path) = Self::find_octocache_in_game_dir(&candidate) {
+                        info!(
+                            "Found HoloDori in common default path: {}",
+                            candidate.display()
+                        );
+                        return SteamDetectionResult {
+                            found: true,
+                            install_path: Some(candidate.to_string_lossy().to_string()),
+                            octocache_path: Some(octo_path.to_string_lossy().to_string()),
+                            source: Some(SteamDetectionSource::CommonDefault),
+                            message: "Discovered installation in standard Steam library path"
+                                .to_string(),
+                        };
+                    }
                 }
             }
         }
@@ -105,6 +145,13 @@ impl SteamDetector {
             source: None,
             message: "HoloDori installation not automatically detected. Please select the game folder manually.".to_string(),
         }
+    }
+
+    /// Parses the "installdir" property from a Steam .acf manifest.
+    pub fn parse_acf_installdir(content: &str) -> Option<String> {
+        let re = regex::Regex::new(r#""installdir"\s+"([^"]+)""#).ok()?;
+        re.captures(content)
+            .and_then(|c| c.get(1).map(|m| m.as_str().to_string()))
     }
 
     /// Validates a user-supplied directory path (manual fallback).
@@ -120,7 +167,11 @@ impl SteamDetector {
         }
 
         if let Some(octo_path) = Self::find_octocache_in_game_dir(path) {
-            let root = if path.file_name().is_some_and(|n| n == DATA_DIR_NAME) {
+            let is_sub = path.file_name().is_some_and(|n| {
+                let name = n.to_string_lossy();
+                DATA_DIR_CANDIDATES.contains(&name.as_ref()) || name == "Octo"
+            });
+            let root = if is_sub {
                 path.parent().unwrap_or(path).to_path_buf()
             } else {
                 path.to_path_buf()
@@ -149,16 +200,46 @@ impl SteamDetector {
 
     /// Searches for `octocacheevai` within a potential game installation directory.
     pub fn find_octocache_in_game_dir(dir: &Path) -> Option<PathBuf> {
-        // Direct match if passed hololive Dreams_Data
+        // Direct probes
         let direct = dir.join(OCTOCACHE_FILENAME);
         if direct.is_file() {
             return Some(direct);
         }
 
-        // Direct match if passed root hololive Dreams
-        let in_data = dir.join(DATA_DIR_NAME).join(OCTOCACHE_FILENAME);
-        if in_data.is_file() {
-            return Some(in_data);
+        let in_octo = dir.join("Octo").join(OCTOCACHE_FILENAME);
+        if in_octo.is_file() {
+            return Some(in_octo);
+        }
+
+        for data_name in DATA_DIR_CANDIDATES {
+            let cand_octo = dir.join(data_name).join("Octo").join(OCTOCACHE_FILENAME);
+            if cand_octo.is_file() {
+                return Some(cand_octo);
+            }
+            let cand_direct = dir.join(data_name).join(OCTOCACHE_FILENAME);
+            if cand_direct.is_file() {
+                return Some(cand_direct);
+            }
+            let cand_streaming = dir
+                .join(data_name)
+                .join("StreamingAssets")
+                .join(OCTOCACHE_FILENAME);
+            if cand_streaming.is_file() {
+                return Some(cand_streaming);
+            }
+        }
+
+        // Bounded recursive walk up to depth 3
+        if dir.is_dir() {
+            for entry in walkdir::WalkDir::new(dir)
+                .max_depth(3)
+                .into_iter()
+                .flatten()
+            {
+                if entry.file_type().is_file() && entry.file_name() == OCTOCACHE_FILENAME {
+                    return Some(entry.into_path());
+                }
+            }
         }
 
         None
@@ -323,5 +404,33 @@ mod tests {
         let invalid = dir.path().join("invalid");
         let result_invalid = SteamDetector::validate_path(&invalid);
         assert!(!result_invalid.found);
+    }
+
+    #[test]
+    fn test_parse_acf_installdir() {
+        let sample = r#"
+        "AppState"
+        {
+            "appid" "4282500"
+            "installdir" "hololiveDreams"
+        }
+        "#;
+        assert_eq!(
+            SteamDetector::parse_acf_installdir(sample),
+            Some("hololiveDreams".to_string())
+        );
+    }
+
+    #[test]
+    fn test_find_octocache_in_octo_subdir() {
+        let dir = tempdir().unwrap();
+        let game_dir = dir.path().join("hololiveDreams");
+        let octo_dir = game_dir.join("hololive-Dreams_Data").join("Octo");
+        std::fs::create_dir_all(&octo_dir).unwrap();
+        let octo_file = octo_dir.join("octocacheevai");
+        std::fs::write(&octo_file, b"test").unwrap();
+
+        let found = SteamDetector::find_octocache_in_game_dir(&game_dir);
+        assert_eq!(found, Some(octo_file));
     }
 }

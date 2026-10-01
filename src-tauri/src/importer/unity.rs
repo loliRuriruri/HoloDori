@@ -19,6 +19,41 @@ use super::types::{ExtractedLive2DAsset, ExtractedTexture};
 use crate::domain::error::{DomainError, ErrorCode};
 use crate::domain::octo::deobfuscate_bundle_header;
 
+/// Authoritative default Unity version override for HoloDori asset bundles.
+///
+/// Provenance:
+/// HoloDori (Steam AppID 4282500) bundles have stripped version headers ("0.0.0").
+/// The official game binary ships with UnityPlayer.dll (ProductVersion "6000.3.15f1 (c1aa84e375f6)").
+/// unity-rs-core requires this override to resolve version-dependent Texture2D layout.
+pub const DEFAULT_UNITY_VERSION_OVERRIDE: &str = "6000.3.15f1";
+
+/// Resolves the Unity version to use during asset extraction.
+/// Probes installed game directory (e.g. from UnityPlayer.dll version string)
+/// if available, and falls back to DEFAULT_UNITY_VERSION_OVERRIDE.
+pub fn resolve_unity_version(game_dir: Option<&Path>) -> String {
+    if let Some(dir) = game_dir {
+        let player_dll = dir.join("UnityPlayer.dll");
+        if player_dll.is_file() {
+            if let Ok(bytes) = fs::read(&player_dll) {
+                let text = String::from_utf8_lossy(&bytes);
+                if let Ok(re) = regex::Regex::new(r"\b(6000\.\d+\.\d+[a-z]\d+)\b") {
+                    if let Some(cap) = re.captures(&text) {
+                        if let Some(m) = cap.get(1) {
+                            let ver = m.as_str().to_string();
+                            info!(
+                                "Dynamically resolved Unity version from UnityPlayer.dll: {}",
+                                ver
+                            );
+                            return ver;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    DEFAULT_UNITY_VERSION_OVERRIDE.to_string()
+}
+
 pub struct UnityExtractor;
 
 impl UnityExtractor {
@@ -78,10 +113,12 @@ impl UnityExtractor {
             )
         })?;
 
-        let unity_version: UnityVersion = "6000.3.15f1".parse().map_err(|e| {
+        let ver_str = resolve_unity_version(None);
+        info!("Applying Unity version override: {}", ver_str);
+        let unity_version: UnityVersion = ver_str.parse().map_err(|e| {
             DomainError::importer(
                 ErrorCode::ErrImporterFailed,
-                format!("Invalid Unity version string: {e}"),
+                format!("Invalid or incompatible Unity version override '{ver_str}': {e}"),
             )
         })?;
 
@@ -281,5 +318,16 @@ mod tests {
             UnityExtractor::parse_model_identity("00010_004", "live2d_mdl_00010-uniq-0069-00");
         assert_eq!(c2, "00010");
         assert_eq!(o2, "004");
+    }
+
+    #[test]
+    fn test_unity_version_override_resolution() {
+        assert_eq!(DEFAULT_UNITY_VERSION_OVERRIDE, "6000.3.15f1");
+        let parsed: Result<UnityVersion, _> = DEFAULT_UNITY_VERSION_OVERRIDE.parse();
+        assert!(parsed.is_ok());
+
+        // Fallback when no directory supplied
+        let resolved = resolve_unity_version(None);
+        assert_eq!(resolved, "6000.3.15f1");
     }
 }

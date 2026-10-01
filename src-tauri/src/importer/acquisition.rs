@@ -45,11 +45,17 @@ impl AssetAcquisition {
         }
     }
 
+    pub fn with_client(mut self, client: reqwest::Client) -> Self {
+        self.client = client;
+        self
+    }
+
     /// Acquires a bundle, checking local cache first. If not cached, downloads from CDN.
     pub async fn acquire_bundle<F>(
         &self,
         object_name: &str,
         expected_md5: &str,
+        expected_size: Option<u64>,
         cache_manager: &ImporterCacheManager,
         cancel_token: Arc<AtomicBool>,
         mut on_progress: F,
@@ -75,8 +81,14 @@ impl AssetAcquisition {
         let url = self.cdn_template.replace("{objectName}", object_name);
         info!("Downloading bundle {} from {}", object_name, url);
 
-        let part_path = target_path.with_extension("part");
+        if cancel_token.load(Ordering::SeqCst) {
+            return Err(DomainError::importer(
+                ErrorCode::ErrCancelled,
+                format!("Acquisition of {object_name} cancelled before request"),
+            ));
+        }
 
+        let part_path = target_path.with_extension("part");
         let response = self.client.get(&url).send().await.map_err(|e| {
             DomainError::importer(
                 ErrorCode::ErrIo,
@@ -93,6 +105,17 @@ impl AssetAcquisition {
         }
 
         let total_size = response.content_length().unwrap_or(0);
+        if let Some(expected) = expected_size {
+            if total_size > 0 && total_size != expected {
+                return Err(DomainError::importer(
+                    ErrorCode::ErrCorruptedData,
+                    format!(
+                        "Content-Length mismatch for {object_name}: expected {expected} bytes, server reported {total_size} bytes"
+                    ),
+                ));
+            }
+        }
+
         let mut stream = response.bytes_stream();
 
         let mut file = File::create(&part_path).map_err(|e| {
@@ -140,6 +163,19 @@ impl AssetAcquisition {
             DomainError::io(&part_path, format!("Flush failed: {e}"))
         })?;
         drop(file);
+
+        // Verify actual downloaded bytes against expected size
+        if let Some(expected) = expected_size {
+            if downloaded_bytes != expected {
+                let _ = fs::remove_file(&part_path);
+                return Err(DomainError::importer(
+                    ErrorCode::ErrCorruptedData,
+                    format!(
+                        "Size mismatch for {object_name}: expected {expected} bytes, received {downloaded_bytes} bytes"
+                    ),
+                ));
+            }
+        }
 
         // Verify MD5
         let computed_md5 = format!("{:x}", hasher.finalize());

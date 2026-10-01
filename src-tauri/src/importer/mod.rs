@@ -149,6 +149,7 @@ impl ImporterCoordinator {
                 .acquire_bundle(
                     &entry.object_name,
                     &entry.md5,
+                    Some(entry.size_bytes),
                     &self.cache_manager,
                     cancel_clone,
                     |received, total_bytes| {

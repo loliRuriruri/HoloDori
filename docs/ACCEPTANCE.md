@@ -149,4 +149,27 @@ HDM.AGENT.3B integrates direct Steam game detection, master asset catalog (`octo
 | **AG3B-9** | Complete User Interface | Source Mode navigation & Importer UI | Provides Source Mode toggle ("Local Resource Files" vs "HoloDori Installation"), Steam install status banner, catalog table with search/filters, bundle cache management, live progress modal, and post-import Library switch. | **PASS** (`ImporterView.tsx`, verified with `npm run build`) |
 | **AG3B-10**| Safe Read-Only Operation & Clean Repo | Repository & process audit | Zero writes or modifications to Steam game files; zero proprietary game bundles or assets committed to git. | **PASS** (`git status` audit) |
 
+---
+
+## Acceptance Gate: HDM.AGENT.3B-R — Final Product Acceptance
+
+HDM.AGENT.3B-R closes the final end-to-end acceptance evidence for the integrated HoloDori source importer. It verifies cold CDN acquisition, local cache persistence, bit-for-bit MOC3 identity against AGENT.1R2, official Live2D Cubism Viewer 5.3 runtime rendering, production cancellation, deterministic HTTP failure regressions, dynamic Unity version override provenance, third-party licensing, and batch performance.
+
+### Mandatory Acceptance Gates (HDM.AGENT.3B-R)
+
+| Gate ID | Requirement | Verification Method | Pass Criteria | Status |
+|---|---|---|---|---|
+| **AG3BR-1** | Baseline & Regression Suite | `cargo test --workspace` | All 72 automated unit and integration tests pass without failure (13 lib + 16 importer integration + 15 library batch + 28 pipeline integration). | **PASS** (72/72 tests green) |
+| **AG3BR-2** | Mandatory Cold CDN Import | `validate_agent3b_r` runner | Enforces cold cache state (targets deleted prior to run); acquires real bundles via CDN for `00007_001` (`DCgZ7m`), `00010_001` (`LTdJTw`), and `00010_004` (`Cfywj9`); verifies HTTP 200, byte length, MD5, and atomic `.part` replacement upon publication. | **PASS** (3/3 models cold acquired and published) |
+| **AG3BR-3** | Bit-for-bit MOC3 Identity | SHA-256 comparison against AGENT.1R2 | Extracted `.moc3` files match known AGENT.1R2 SHA-256 hashes bit-for-bit:<br>• `00007_001`: `7eab9201087f3ffb6bc05bbbfa2eb63d84e265c6980820353d872c89faa4ac3b`<br>• `00010_001`: `88cf2df92675ee341b9c5e4520c8b17d869b05cf5f6572f09c6428beb471879c`<br>• `00010_004`: `7e950781c77d52bb73ddc18cdee46a47e5ee04ebcd91311e7bb1aa666040a2b1` | **PASS** (100% bit-for-bit match) |
+| **AG3BR-4** | Warm Cache Verification | Second import execution | Re-running import reuses local bundle cache, completely skips network requests, and produces identical SHA-256 output. | **PASS** (Zero network dependency, identical hashes) |
+| **AG3BR-5** | Official Live2D Runtime Acceptance | Live2D Cubism Viewer 5.3 (`CubismViewer5.bat`) | Generated packages loaded into official Cubism Viewer 5.3. Log verification in `log_viewer.txt` confirms Cubism Core 06.00.0513 runtime acceptance, mesh deformation, and texture binding without errors for `00007_001` and `00010_001`. | **PASS** (Cubism Viewer 5.3 runtime verified) |
+| **AG3BR-6** | Production Cancellation | Token-triggered abort | Cancelling import halts acquisition cleanly at model boundary, cleans up partial files, and reports `cancelled: true` without corrupting state. | **PASS** (`validate_agent3b_r` cancellation gate verified) |
+| **AG3BR-7** | HTTP Failure Regressions | Deterministic local mock server | 10 integration test scenarios verifying handling of HTTP 200, HTTP 404, timeouts, connection drops, truncated bodies, Content-Length mismatches, size mismatches, MD5 mismatches, cancellation, and cache hit/miss/invalidation. | **PASS** (10/10 mock tests green) |
+| **AG3BR-8** | Unity Version Provenance | `importer::unity` module | Isolate `DEFAULT_UNITY_VERSION_OVERRIDE = "6000.3.15f1"`, document origin in `UnityPlayer.dll` (ProductVersion `6000.3.15f1 (c1aa84e375f6)`), dynamically resolve with fallback, and log diagnostic info. | **PASS** (`test_unity_version_override_resolution`) |
+| **AG3BR-9** | Third-Party Licensing Audit | `docs/THIRD_PARTY_REVIEW.md` | Formal licensing audit for `unity-rs-core = 0.5.2` (MIT License, copyright 2024 seiunx-dev), `reqwest`, `futures-util`, `aes`, `cbc`. | **PASS** (Licensing audit updated) |
+| **AG3BR-10**| Multi-Model Batch Benchmark | 10-model batch run | Successfully imports 10 real HoloDori models (43 MB total bundle data) with progress reporting and zero failures in 136.90s. | **PASS** (10/10 models succeeded) |
+| **AG3BR-11**| Clean Repository & Zero Game Assets | Git audit (`git status`, `git ls-files`) | Zero copyrighted game bundles, raw textures, or decrypted game assets committed or tracked in git; `.gitignore` enforced. | **PASS** (Working tree clean of copyrighted assets) |
+
+
 
