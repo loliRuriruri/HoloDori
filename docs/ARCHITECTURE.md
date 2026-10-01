@@ -178,11 +178,17 @@ flowchart TD
 
 ---
 
-## 5. Future Extension Interfaces (Phases 2-6)
-
-The core architecture provides clean extension points:
-- **Phase 2**: Batch library persistence, manual pairing overrides in UI.
-- **Phase 3**: HoloDori game archive asset importer.
-- **Phase 4**: WebGL / WebGPU Live2D Cubism runtime canvas viewer.
-- **Phase 5**: Windows desktop wallpaper mode (borderless transparent window).
-- **Phase 6**: Optional export / bridging to Live2DRecovery for editable CMO3 project generation.
+## 5. Subsystem Status & Roadmap
+- **Phase 1 (Core Pipeline)**: COMPLETED.
+- **Phase 2 (Library & Batch Manager)**: COMPLETED.
+- **Phase 3 (Integrated HoloDori Game Importer)**: COMPLETED.
+- **Phase 4A (Embedded Live2D WebGL Viewer Foundation)**: COMPLETED.
+  - WebGL runtime using Live2D Cubism 5 Web Framework.
+  - Safe IPC file bridge via `read_package_file`.
+  - Memory-safe Blob URL texture streaming with automatic disposal.
+  - Procedural breathing and eye blink idle animations.
+  - Interactive camera controls: aspect-preserving pan & zoom.
+  - Live parameter inspection, categorization, and reset controls.
+- **Phase 4B (Motion & Expression Integration)**: FUTURE.
+- **Phase 5 (Windows Desktop Wallpaper Mode)**: FUTURE.
+- **Phase 6 (Live2DRecovery Bridge)**: FUTURE.

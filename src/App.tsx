@@ -6,6 +6,7 @@ import { openPath } from '@tauri-apps/plugin-opener';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import './App.css';
 import { ImporterView } from './components/ImporterView';
+import { ViewerPage, ModelPackageTarget } from './viewer';
 import {
   CharacterLibrary,
   OutfitEntry,
@@ -18,6 +19,9 @@ import {
 } from './types';
 
 export const App: React.FC = () => {
+  // Viewer Target State (when non-null, embedded Live2D viewer is active)
+  const [viewerTarget, setViewerTarget] = useState<ModelPackageTarget | null>(null);
+
   // Source Mode: 'local' (Local Resource Files) vs 'game' (HoloDori Installation)
   const [sourceMode, setSourceMode] = useState<'local' | 'game'>('game');
 
@@ -49,20 +53,28 @@ export const App: React.FC = () => {
   const [outfitBuildStatuses, setOutfitBuildStatuses] = useState<Record<string, BuildStatus>>({});
 
   useEffect(() => {
-    invoke<string>('get_default_output_dir')
-      .then((dir) => setOutputDir(dir))
-      .catch(() => setOutputDir('./output'));
+    const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+    if (isTauri) {
+      invoke<string>('get_default_output_dir')
+        .then((dir) => setOutputDir(dir))
+        .catch(() => setOutputDir('./output'));
+    } else {
+      setOutputDir('./output');
+    }
   }, []);
 
   // Listen to batch progress events from Tauri
   useEffect(() => {
+    const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+    if (!isTauri) return;
+
     let unlistenFn: (() => void) | null = null;
     listen<BatchProgress>('batch-progress', (event) => {
       setBuildProgress(event.payload);
       setStatusMessage(`Building ${event.payload.current_index} / ${event.payload.total_models} — ${event.payload.current_model_id}`);
     }).then((unlisten) => {
       unlistenFn = unlisten;
-    });
+    }).catch((e) => console.warn('Could not register batch-progress listener', e));
 
     return () => {
       if (unlistenFn) unlistenFn();
@@ -95,6 +107,28 @@ export const App: React.FC = () => {
       }
     } catch (e) {
       console.warn('Output folder picker unavailable or cancelled', e);
+    }
+  };
+
+  const handleOpenFolderInViewer = async () => {
+    try {
+      const selected = await openDialog({
+        directory: true,
+        multiple: false,
+      });
+      if (selected && typeof selected === 'string') {
+        const clean = selected.replace(/[\\/]+$/, '');
+        const base = clean.split(/[\\/]/).pop() || 'model';
+        const parts = base.split('_');
+        setViewerTarget({
+          packageDir: selected,
+          characterId: parts[0] || 'Unknown',
+          outfitId: parts[1] || '001',
+          displayName: base,
+        });
+      }
+    } catch (e) {
+      console.warn('Viewer folder picker cancelled or failed', e);
     }
   };
 
@@ -343,7 +377,7 @@ export const App: React.FC = () => {
         <div className="brand-title">
           <span className="brand-logo">🎭</span>
           <span>HoloDori Live2D Manager</span>
-          <span className="brand-badge">AGENT.3B</span>
+          <span className="brand-badge">AGENT.4A</span>
         </div>
 
         {/* SOURCE MODE TABS */}
@@ -362,6 +396,14 @@ export const App: React.FC = () => {
             <span>🎮</span>
             <span>HoloDori Installation</span>
             <span className="tab-badge">AUTO</span>
+          </button>
+          <button
+            className="nav-tab"
+            onClick={handleOpenFolderInViewer}
+            title="Open any built or imported Live2D package directory in the embedded viewer"
+          >
+            <span>👁️</span>
+            <span>Live2D Viewer</span>
           </button>
         </div>
 
@@ -405,6 +447,7 @@ export const App: React.FC = () => {
             setSourceMode('local');
             triggerScan(importedDir, false);
           }}
+          onOpenViewer={(target) => setViewerTarget(target)}
         />
       ) : (
         <>
@@ -625,6 +668,33 @@ export const App: React.FC = () => {
                       ) : (
                         <span className="status-badge status-notbuilt">NOT BUILT</span>
                       )}
+                      <button
+                        className="btn-card-view"
+                        title="View in Live2D Viewer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const pkgDir = `${outputDir}/${outfit.id}`;
+                          setViewerTarget({
+                            packageDir: pkgDir,
+                            characterId: outfit.character_id,
+                            outfitId: outfit.outfit_id,
+                            displayName: `${outfit.id} (${outfit.style_token || 'Normal'})`,
+                          });
+                        }}
+                        style={{
+                          marginLeft: 'auto',
+                          background: 'none',
+                          border: '1px solid #3e4451',
+                          borderRadius: '3px',
+                          color: '#98c379',
+                          cursor: 'pointer',
+                          padding: '2px 6px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        👁️
+                      </button>
                     </div>
 
                     {outfit.warnings.length > 0 && (
@@ -777,7 +847,34 @@ export const App: React.FC = () => {
                 </div>
               )}
 
-              <div className="details-actions">
+              <div className="details-actions" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button
+                  className="btn-viewer btn-block"
+                  style={{
+                    backgroundColor: '#98c379',
+                    color: '#181a1f',
+                    fontWeight: 600,
+                    padding: '8px 12px',
+                    borderRadius: '4px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                  }}
+                  onClick={() => {
+                    const pkgDir = `${outputDir}/${activeOutfit.id}`;
+                    setViewerTarget({
+                      packageDir: pkgDir,
+                      characterId: activeOutfit.character_id,
+                      outfitId: activeOutfit.outfit_id,
+                      displayName: `${activeOutfit.id} (${activeOutfit.style_token || 'Normal'})`,
+                    });
+                  }}
+                >
+                  👁️ Open in Live2D Viewer
+                </button>
                 <button
                   className="btn-primary btn-block"
                   onClick={() => handleBatchBuild([activeOutfit])}
@@ -851,6 +948,13 @@ export const App: React.FC = () => {
         </div>
       </footer>
       </>
+    )}
+
+    {viewerTarget && (
+      <ViewerPage
+        target={viewerTarget}
+        onBack={() => setViewerTarget(null)}
+      />
     )}
   </div>
 );

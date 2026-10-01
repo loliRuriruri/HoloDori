@@ -22,7 +22,8 @@ pub fn run() {
             commands::import_models,
             commands::cancel_import,
             commands::get_import_cache_stats,
-            commands::clear_import_cache
+            commands::clear_import_cache,
+            commands::read_package_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

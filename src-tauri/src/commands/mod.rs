@@ -287,3 +287,76 @@ pub async fn get_import_cache_stats(
 pub async fn clear_import_cache(state: tauri::State<'_, ImporterState>) -> Result<u64, String> {
     state.coordinator.clear_cache().map_err(|e| e.to_string())
 }
+
+#[command]
+pub async fn read_package_file(
+    package_dir: String,
+    relative_path: String,
+) -> Result<Vec<u8>, String> {
+    let pkg_path = PathBuf::from(&package_dir);
+    if !pkg_path.is_dir() {
+        return Err(format!("Package directory does not exist: {package_dir}"));
+    }
+    let canonical_pkg = pkg_path
+        .canonicalize()
+        .map_err(|e| format!("Failed to canonicalize package dir {package_dir}: {e}"))?;
+
+    let target = canonical_pkg.join(&relative_path);
+    let canonical_target = target
+        .canonicalize()
+        .map_err(|e| format!("File not found in package: {relative_path}: {e}"))?;
+
+    // Security: Strict path containment verification to prevent directory traversal
+    if !canonical_target.starts_with(&canonical_pkg) {
+        return Err("Access denied: target file escapes package directory".to_string());
+    }
+
+    std::fs::read(&canonical_target)
+        .map_err(|e| format!("Failed to read {}: {e}", canonical_target.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn test_read_package_file_success_and_traversal() {
+        let dir = tempdir().unwrap();
+        let pkg_dir = dir.path().join("model_pkg");
+        std::fs::create_dir_all(pkg_dir.join("textures")).unwrap();
+        std::fs::write(pkg_dir.join("model3.json"), b"{\"Version\": 3}").unwrap();
+        std::fs::write(
+            pkg_dir.join("textures").join("texture_00.png"),
+            b"fake_png_data",
+        )
+        .unwrap();
+
+        // Write file outside package directory
+        let secret = dir.path().join("secret.txt");
+        std::fs::write(&secret, b"sensitive_data").unwrap();
+
+        let pkg_str = pkg_dir.to_str().unwrap().to_string();
+
+        // 1. Success reading model3.json
+        let res = read_package_file(pkg_str.clone(), "model3.json".into())
+            .await
+            .unwrap();
+        assert_eq!(res, b"{\"Version\": 3}");
+
+        // 2. Success reading subpath
+        let tex_res = read_package_file(pkg_str.clone(), "textures/texture_00.png".into())
+            .await
+            .unwrap();
+        assert_eq!(tex_res, b"fake_png_data");
+
+        // 3. Error on non-existent file
+        let not_found = read_package_file(pkg_str.clone(), "nonexistent.moc3".into()).await;
+        assert!(not_found.is_err());
+
+        // 4. Security rejection on path traversal attempt
+        let traversal = read_package_file(pkg_str.clone(), "../secret.txt".into()).await;
+        assert!(traversal.is_err());
+        assert!(traversal.unwrap_err().contains("escapes package directory"));
+    }
+}

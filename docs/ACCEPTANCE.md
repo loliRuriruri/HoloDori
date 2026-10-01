@@ -167,9 +167,27 @@ HDM.AGENT.3B-R closes the final end-to-end acceptance evidence for the integrate
 | **AG3BR-6** | Production Cancellation | Token-triggered abort | Cancelling import halts acquisition cleanly at model boundary, cleans up partial files, and reports `cancelled: true` without corrupting state. | **PASS** (`validate_agent3b_r` cancellation gate verified) |
 | **AG3BR-7** | HTTP Failure Regressions | Deterministic local mock server | 10 integration test scenarios verifying handling of HTTP 200, HTTP 404, timeouts, connection drops, truncated bodies, Content-Length mismatches, size mismatches, MD5 mismatches, cancellation, and cache hit/miss/invalidation. | **PASS** (10/10 mock tests green) |
 | **AG3BR-8** | Unity Version Provenance | `importer::unity` module | Isolate `DEFAULT_UNITY_VERSION_OVERRIDE = "6000.3.15f1"`, document origin in `UnityPlayer.dll` (ProductVersion `6000.3.15f1 (c1aa84e375f6)`), dynamically resolve with fallback, and log diagnostic info. | **PASS** (`test_unity_version_override_resolution`) |
-| **AG3BR-9** | Third-Party Licensing Audit | `docs/THIRD_PARTY_REVIEW.md` | Formal licensing audit for `unity-rs-core = 0.5.2` (MIT License, copyright 2024 seiunx-dev), `reqwest`, `futures-util`, `aes`, `cbc`. | **PASS** (Licensing audit updated) |
-| **AG3BR-10**| Multi-Model Batch Benchmark | 10-model batch run | Successfully imports 10 real HoloDori models (43 MB total bundle data) with progress reporting and zero failures in 136.90s. | **PASS** (10/10 models succeeded) |
-| **AG3BR-11**| Clean Repository & Zero Game Assets | Git audit (`git status`, `git ls-files`) | Zero copyrighted game bundles, raw textures, or decrypted game assets committed or tracked in git; `.gitignore` enforced. | **PASS** (Working tree clean of copyrighted assets) |
+---
+
+## Acceptance Gate: HDM.AGENT.4A — Embedded Live2D Viewer Foundation
+
+HDM.AGENT.4A implements an embedded real-time WebGL Live2D viewer inside the HoloDori Live2D Manager desktop application using the Live2D Cubism 5 Web SDK.
+
+### Mandatory Acceptance Gates (HDM.AGENT.4A)
+
+| Gate ID | Requirement | Verification Method | Pass Criteria | Status |
+|---|---|---|---|---|
+| **AG4A-1** | Baseline & Zero Regression | `cargo test --workspace` & `npm run build` | All 73 backend unit/integration tests pass; frontend compiles with 0 errors via `tsc` and `vite build`. | **PASS** (73/73 cargo tests green; 0 build errors) |
+| **AG4A-2** | Cubism SDK Web Integration | Framework & Shader pipeline | Live2D Cubism 5 Web Framework and 13 WebGL shaders integrated into `src/viewer/cubism/framework/` and `public/shaders/` under Live2D Open Software License. | **PASS** (`docs/CUBISM_SDK_INTEGRATION.md`) |
+| **AG4A-3** | Proprietary License Compliance | Git audit & Graceful degradation | `live2dcubismcore.min.js` strictly gitignored; if missing, app launches normally and displays informative diagnostic card rather than crashing. | **PASS** (`.gitignore` audit, Core availability check) |
+| **AG4A-4** | Sandboxed File Bridge | `read_package_file` Tauri IPC | Backend enforces canonical path prefix containment against directory traversal (`../`). | **PASS** (`test_read_package_file_success_and_traversal`) |
+| **AG4A-5** | Real Model Runtime Acceptance | Headless Edge browser runner (`scripts/test_viewer_runtime.mjs`) | Verified on real packages:<br>• `00007_001`: 131 parameters extracted, size 1x1.5, live slider modification verified.<br>• `00010_001`: 162 parameters extracted. | **PASS** (Edge headless WebGL acceptance test) |
+| **AG4A-6** | Viewport & Camera Controls | Aspect & transform math tests | Aspect-preserving letterbox scaling, drag pan, wheel zoom (0.2x to 8.0x), Fit, and Reset verified. | **PASS** (`tests/viewer_unit.test.mjs`) |
+| **AG4A-7** | Parameter Inspector | Live parameter controls & reset | Parameters categorized into Angle, Eye, Eyebrow, Mouth, Body, Hair, Other; live sliders with default restore (`↺`) and "Reset All". | **PASS** (`tests/viewer_unit.test.mjs`, `ViewerControls.tsx`) |
+| **AG4A-8** | Procedural Idle Animations | `CubismBreath` & `CubismEyeBlink` | Auto-detects model parameter IDs and applies breathing and eye blink oscillation; user overrides take priority. | **PASS** (`model.ts`, verified in runtime test) |
+| **AG4A-9** | 20-Cycle Repeated Load/Unload Stress Test | Automated alternating loop | 20 sequential cycles alternating between `00007_001` and `00010_001` with complete texture/buffer disposal and zero leaks. | **PASS** (20/20 cycles complete) |
+| **AG4A-10**| Clean Repository & Zero Game Assets | Git audit (`git status`, `git ls-files`) | Zero game assets, zero `.moc3`/`.png` samples, and zero proprietary Core binaries committed to git. | **PASS** (Strict `.gitignore` enforcement) |
+
 
 
 

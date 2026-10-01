@@ -18,6 +18,12 @@ interface ImporterViewProps {
   conflictPolicy: ConflictPolicy;
   setConflictPolicy: (policy: ConflictPolicy) => void;
   onNavigateToLibrary: (scanPath: string) => void;
+  onOpenViewer?: (target: {
+    packageDir: string;
+    characterId: string;
+    outfitId: string;
+    displayName?: string;
+  }) => void;
 }
 
 export const ImporterView: React.FC<ImporterViewProps> = ({
@@ -26,6 +32,7 @@ export const ImporterView: React.FC<ImporterViewProps> = ({
   conflictPolicy,
   setConflictPolicy,
   onNavigateToLibrary,
+  onOpenViewer,
 }) => {
   // Steam & Cache state
   const [detection, setDetection] = useState<SteamDetectionResult | null>(null);
@@ -54,18 +61,24 @@ export const ImporterView: React.FC<ImporterViewProps> = ({
 
   // Initial detection & cache stats fetch
   useEffect(() => {
-    runDetection();
-    refreshCacheStats();
+    const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+    if (isTauri) {
+      runDetection();
+      refreshCacheStats();
+    }
   }, []);
 
   // Listen to import progress events from backend
   useEffect(() => {
+    const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+    if (!isTauri) return;
+
     let unlistenFn: (() => void) | null = null;
     listen<ImportProgress>('import-progress', (event) => {
       setImportProgress(event.payload);
     }).then((unlisten) => {
       unlistenFn = unlisten;
-    });
+    }).catch((e) => console.warn('Could not register import-progress listener', e));
 
     return () => {
       if (unlistenFn) unlistenFn();
@@ -667,14 +680,42 @@ export const ImporterView: React.FC<ImporterViewProps> = ({
                   <h4>✅ Successfully Created Packages</h4>
                   <div className="result-list-scroll">
                     {lastResult.succeeded.map((s, idx) => (
-                      <div key={idx} className="result-item-row success-item">
-                        <span className="item-id">
-                          {s.character_id}_{s.outfit_id}
-                        </span>
-                        <span className="item-asset text-muted">{s.asset_name}</span>
-                        <span className="item-dest truncate" title={s.output_dir}>
-                          {s.output_dir}
-                        </span>
+                      <div key={idx} className="result-item-row success-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                          <span className="item-id">
+                            {s.character_id}_{s.outfit_id}
+                          </span>
+                          <span className="item-asset text-muted">{s.asset_name}</span>
+                          <span className="item-dest truncate" title={s.output_dir}>
+                            {s.output_dir}
+                          </span>
+                        </div>
+                        {onOpenViewer && (
+                          <button
+                            className="btn-primary"
+                            style={{
+                              padding: '2px 8px',
+                              fontSize: '11px',
+                              backgroundColor: '#98c379',
+                              color: '#181a1f',
+                              border: 'none',
+                              borderRadius: '3px',
+                              cursor: 'pointer',
+                              fontWeight: 600,
+                              whiteSpace: 'nowrap',
+                            }}
+                            onClick={() => {
+                              onOpenViewer({
+                                packageDir: s.output_dir,
+                                characterId: s.character_id,
+                                outfitId: s.outfit_id,
+                                displayName: `${s.character_id}_${s.outfit_id}`,
+                              });
+                            }}
+                          >
+                            👁️ View
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

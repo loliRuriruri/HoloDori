@@ -44,8 +44,14 @@ All application dependencies are audited permissive open-source packages:
     - *Purpose*: High-performance asynchronous streaming HTTP/HTTPS client for CDN bundle retrieval with MD5 verification.
   - `aes`, `cbc` (Apache-2.0 / MIT)
     - *Purpose*: Pure-Rust AES-128-CBC decryption of master asset catalog (`octocacheevai`).
-- **Frontend**:
+- **Frontend & WebGL Runtime**:
   - `react`, `react-dom` (MIT)
   - `vite` (MIT)
   - `typescript` (Apache-2.0)
   - `@tauri-apps/api`, `@tauri-apps/plugin-dialog`, `@tauri-apps/plugin-opener` (Apache-2.0 / MIT)
+  - `Live2D Cubism 5 SDK for Web R5 - Framework & Shaders` (Live2D Open Software License)
+    - *Purpose*: TypeScript framework modules for model lifecycle, rendering matrices, eye blinking, and breathing effect updates. WebGL shader sources for premultiplied alpha rendering.
+    - *Permitted Distribution*: Distributed in source form inside `src/viewer/cubism/framework/` and `public/shaders/` pursuant to the Live2D Open Software License.
+  - `Live2D Cubism Core (live2dcubismcore.min.js)` (Live2D Proprietary Software License)
+    - *Status*: **STRICTLY NOT DISTRIBUTED / GITIGNORED**.
+    - *Policy*: The application cleanly separates the proprietary Core from the codebase. The Core is loaded optionally/dynamically at runtime. If absent, the application remains fully functional and alerts the user without crashing.
